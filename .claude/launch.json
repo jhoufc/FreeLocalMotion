@@ -1,0 +1,7 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    { "name": "server", "runtimeExecutable": "pnpm", "runtimeArgs": ["--filter", "@lms/server", "dev"], "port": 4317 },
+    { "name": "studio-preview", "runtimeExecutable": "pnpm", "runtimeArgs": ["--filter", "@lms/studio", "exec", "vite", "--port", "5180", "--strictPort"], "port": 5180 }
+  ]
+}

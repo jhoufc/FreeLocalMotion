@@ -1,0 +1,41 @@
+{
+  "name": "local-motion-studio",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Local visual editor for programmatic motion graphics templates, powered by Remotion.",
+  "type": "module",
+  "packageManager": "pnpm@11.9.0",
+  "engines": {
+    "node": ">=20.11"
+  },
+  "scripts": {
+    "dev": "pnpm --parallel --filter @lms/server --filter @lms/studio dev",
+    "build": "pnpm --filter @lms/studio build",
+    "start": "pnpm --filter @lms/server start",
+    "typecheck": "pnpm -r --workspace-concurrency=1 typecheck && tsc -p tsconfig.scripts.json",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "render:samples": "tsx scripts/render-samples.ts",
+    "render:stills": "tsx scripts/render-stills.ts",
+    "verify:videos": "tsx scripts/verify-videos.ts",
+    "verify:media": "tsx scripts/verify-media.ts"
+  },
+  "devDependencies": {
+    "@fontsource-variable/archivo": "^5.3.0",
+    "@fontsource-variable/inter": "^5.3.0",
+    "@fontsource-variable/jetbrains-mono": "^5.3.0",
+    "@types/node": "^22.10.0",
+    "tsx": "^4.20.0",
+    "typescript": "~5.9.3",
+    "vitest": "^5.0.3",
+    "@lms/catalog": "workspace:*",
+    "@lms/shared": "workspace:*",
+    "@lms/template-sdk": "workspace:*",
+    "@lms/server": "workspace:*",
+    "@remotion/bundler": "4.0.534",
+    "@remotion/renderer": "4.0.534",
+    "react": "^19.1.0",
+    "react-dom": "^19.1.0",
+    "remotion": "4.0.534"
+  }
+}

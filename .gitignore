@@ -1,0 +1,10 @@
+node_modules/
+dist/
+.remotion-cache/
+exports/*
+!exports/.gitkeep
+projects/*
+!projects/.gitkeep
+*.log
+.DS_Store
+coverage/
