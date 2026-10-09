@@ -285,10 +285,10 @@ export const EnergySceneView = ({ env }: { env: SceneEnv<EnergyScene> }) => {
       <SceneBackground env={env} focus={{ x: core.x, y: core.y }} />
 
       <svg width={L.width} height={L.height} style={{ position: 'absolute', inset: 0, overflow: 'visible' }}>
-        <g data-lms-target="energy.grid" opacity={exitFade}>
+        <g data-lms-target={env.target('grid')} opacity={exitFade}>
           {gridNodes}
         </g>
-        <g data-lms-target="energy.rings" opacity={exitFade}>
+        <g data-lms-target={env.target('rings')} opacity={exitFade}>
           <line x1={core.x - crossLen} y1={core.y} x2={core.x + crossLen} y2={core.y} stroke={crossColor} strokeWidth={1.2 * u} />
           <line x1={core.x} y1={core.y - crossLen} x2={core.x} y2={core.y + crossLen} stroke={crossColor} strokeWidth={1.2 * u} />
           <g transform={`translate(${round(core.x * (1 - ringScale), 2)} ${round(core.y * (1 - ringScale), 2)}) scale(${round(ringScale, 4)})`}>
@@ -296,8 +296,8 @@ export const EnergySceneView = ({ env }: { env: SceneEnv<EnergyScene> }) => {
             {ticks}
           </g>
         </g>
-        <g data-lms-target="energy.core">{waves}</g>
-        <g data-lms-target="energy.orbiters" opacity={exitFade}>
+        <g data-lms-target={env.target('core')}>{waves}</g>
+        <g data-lms-target={env.target('orbiters')} opacity={exitFade}>
           {orbiters}
         </g>
       </svg>
@@ -305,7 +305,7 @@ export const EnergySceneView = ({ env }: { env: SceneEnv<EnergyScene> }) => {
       {/* Core disc */}
       {E.core.visible && coreR > 0 ? (
         <div
-          data-lms-target="energy.core"
+          data-lms-target={env.target('core')}
           style={{
             position: 'absolute',
             left: core.x - coreR,
@@ -388,7 +388,7 @@ export const EnergySceneView = ({ env }: { env: SceneEnv<EnergyScene> }) => {
         }}
       >
         <TextBlock
-          targetId="energy.lead"
+          targetId={env.target('lead')}
           text={lead}
           color={env.color(scene.texts.lead.color)}
           align={align}
@@ -404,7 +404,7 @@ export const EnergySceneView = ({ env }: { env: SceneEnv<EnergyScene> }) => {
           }}
         />
         <TextBlock
-          targetId="energy.headline"
+          targetId={env.target('headline')}
           text={head}
           color={env.color(scene.texts.headline.color)}
           align={align}

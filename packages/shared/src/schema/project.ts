@@ -3,7 +3,17 @@ import { FORMATS } from '../formats';
 import { paletteOverrideSchema, themeSchema } from './color';
 import { backgroundSchema, sceneLayoutSchema } from './elements';
 
-export const CURRENT_SCHEMA_VERSION = 1 as const;
+/**
+ * v1: fixed scene list (one scene per template slot, `id` doubled as the scene type).
+ * v2: dynamic scene instances — `type` references a scene definition, `id` is a unique
+ *     instance id, `enabled` excludes a scene from the exported duration.
+ */
+export const CURRENT_SCHEMA_VERSION = 2 as const;
+
+/** Upper bound on scene instances per project: a technical guard, not a creative one. */
+export const MAX_SCENES = 48;
+
+export const sceneIdSchema = z.string().regex(/^[a-z0-9-]{1,64}$/);
 
 export const formatSchema = z.enum(FORMATS);
 export const fpsSchema = z.union([z.literal(30), z.literal(60)]);
@@ -38,8 +48,13 @@ export type AudioSettings = z.infer<typeof audioSettingsSchema>;
  * `texts`, `elements`, `animation` and `props` shapes.
  */
 export const sceneBaseShape = {
-  id: z.string().regex(/^[a-z0-9-]+$/),
+  /** Unique instance id inside the project. Also the prefix of the scene's target ids. */
+  id: sceneIdSchema,
+  /** Scene definition (animation) this instance uses. Templates narrow it to literals. */
+  type: z.string().regex(/^[a-z0-9-]+$/),
   name: z.string().min(1).max(60),
+  /** Disabled scenes stay in the project but add no frames to the video. */
+  enabled: z.boolean(),
   /** Seconds. Frame-rate independent: frames = round(duration * fps). */
   duration: z.number().positive(),
   background: backgroundSchema,
@@ -48,6 +63,24 @@ export const sceneBaseShape = {
 };
 export const sceneBaseSchema = z.object(sceneBaseShape);
 export type MotionSceneBase = z.infer<typeof sceneBaseSchema>;
+
+/**
+ * Scene list rules shared by every template: 1..MAX_SCENES instances, unique ids and at
+ * least one enabled scene (a video cannot be empty).
+ */
+export const scenesArray = <T extends z.ZodType<{ id: string; enabled: boolean }>>(scene: T) =>
+  z
+    .array(scene)
+    .min(1)
+    .max(MAX_SCENES)
+    .superRefine((scenes, ctx) => {
+      const seen = new Set<string>();
+      scenes.forEach((s, i) => {
+        if (seen.has(s.id)) ctx.addIssue({ code: 'custom', path: [i, 'id'], message: `Duplicate scene id "${s.id}"` });
+        seen.add(s.id);
+      });
+      if (!scenes.some((s) => s.enabled)) ctx.addIssue({ code: 'custom', path: [], message: 'At least one scene must be enabled' });
+    });
 
 export const projectBaseShape = {
   schemaVersion: z.literal(CURRENT_SCHEMA_VERSION),
@@ -71,7 +104,7 @@ export const projectBaseShape = {
  */
 export const motionProjectSchema = z.object({
   ...projectBaseShape,
-  scenes: z.array(sceneBaseSchema.loose()).min(1),
+  scenes: scenesArray(sceneBaseSchema.loose()),
   globals: z.record(z.string(), z.unknown()),
 });
 export type MotionProject = z.infer<typeof motionProjectSchema>;

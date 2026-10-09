@@ -37,8 +37,8 @@ export const useProjectModel = (project: MotionProject): ProjectModel =>
     };
   }, [project]);
 
-export const sceneAtFrame = (ranges: readonly SceneRange[], frame: number): SceneRange | undefined =>
-  ranges.find((r) => frame >= r.from && frame < r.from + r.durationInFrames) ?? ranges[ranges.length - 1];
+/** Same pure function the composition's HUD uses (re-exported for editor modules). */
+export { sceneAtFrame } from '@lms/template-sdk';
 
 export const formatTime = (frame: number, fps: number): string => {
   const total = frame / fps;

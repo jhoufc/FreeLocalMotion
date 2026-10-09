@@ -1,4 +1,4 @@
-import type { AnyScene, SceneAnimation, SceneId } from './schema';
+import type { AnyScene, SceneAnimation, SceneType } from './schema';
 
 /**
  * Choreography table — the single source of truth for *when* things happen.
@@ -52,10 +52,11 @@ export const CHOREO = {
 export const TRANSFORMATION_CLOCK = 4;
 
 /**
- * Transition-in duration of each scene (seconds). The *previous* scene is kept on screen
- * for this long past its end so both can be composited (iris / light-line wipes).
+ * Transition-in duration of each scene type (seconds). The *previous* scene is kept on
+ * screen for this long past its end so both can be composited (iris / light-line wipes).
+ * The first scene of a video has nothing to transition from and starts clean.
  */
-export const TRANSITION_IN: Record<SceneId, number> = {
+export const TRANSITION_IN: Record<SceneType, number> = {
   impact: 0,
   energy: 0,
   transformation: 0.5,
@@ -68,7 +69,11 @@ export const entranceAt = (base: number, animation: SceneAnimation, delay = 0): 
 /** Maps a normalized transformation-clock time to scene seconds. */
 export const transformationToScene = (tau: number, duration: number): number => (tau * duration) / TRANSFORMATION_CLOCK;
 
-export const nextSceneTransition = (scenes: readonly AnyScene[], index: number): number => {
-  const next = scenes[index + 1];
-  return next ? TRANSITION_IN[next.id] : 0;
+/**
+ * Tail (seconds) the scene at `order` must stay rendered so the following scene can
+ * composite its transition over it. `sequence` is the list of *enabled* scenes in order.
+ */
+export const nextSceneTransition = (sequence: readonly Pick<AnyScene, 'type'>[], order: number): number => {
+  const next = sequence[order + 1];
+  return next ? TRANSITION_IN[next.type] : 0;
 };

@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { FORMATS, getAtPath, setAtPath } from '@lms/shared';
 import { parseProjectForTemplate } from '@lms/template-sdk';
 import { signatureDefinition as def } from '../src/definition';
-import { SCENE_DURATION_LIMITS, type SignatureProject } from '../src/schema';
+import { SCENE_DURATION_LIMITS, type AnyScene, type SignatureProject } from '../src/schema';
 import { CHOREO, TRANSITION_IN } from '../src/timing';
 
 const make = (format: 'portrait' | 'landscape' = 'landscape', fps: 30 | 60 = 30): SignatureProject =>
@@ -17,6 +17,7 @@ describe('Signature / 001 defaults', () => {
   it('is 15 seconds with the four storyboard scenes in order', () => {
     const p = make();
     expect(p.scenes.map((s) => s.id)).toEqual(['impact', 'energy', 'transformation', 'signature']);
+    expect(p.scenes.map((s) => s.type)).toEqual(['impact', 'energy', 'transformation', 'signature']);
     expect(p.scenes.map((s) => s.duration)).toEqual([3, 3, 4, 5]);
     expect(def.getMetadata(p)).toEqual({ width: 1920, height: 1080, fps: 30, durationInFrames: 450 });
     expect(def.getMetadata(make('portrait'))).toMatchObject({ width: 1080, height: 1920 });
@@ -25,11 +26,13 @@ describe('Signature / 001 defaults', () => {
 
   it('ships the storyboard copy and palette', () => {
     const p = make();
-    expect(p.scenes[0].texts.lineA.content).toBe('The Future');
-    expect(p.scenes[0].texts.lineB.content).toBe('Is Built');
-    expect(`${p.scenes[1].texts.lead.content} ${p.scenes[1].texts.headline.content}`).toBe('Not just Imagined.');
-    expect([p.scenes[2].texts.word1.content, p.scenes[2].texts.word2.content, p.scenes[2].texts.word3.content]).toEqual(['Create.', 'Animate.', 'Inspire.']);
-    expect(p.scenes[3].texts.headline.content.replace('\n', ' ')).toBe('Motion without limits.');
+    const of = <T extends AnyScene['type']>(type: T) => p.scenes.find((s) => s.type === type) as Extract<AnyScene, { type: T }>;
+    expect(of('impact').texts.lineA.content).toBe('The Future');
+    expect(of('impact').texts.lineB.content).toBe('Is Built');
+    expect(`${of('energy').texts.lead.content} ${of('energy').texts.headline.content}`).toBe('Not just Imagined.');
+    const t = of('transformation').texts;
+    expect([t.word1.content, t.word2.content, t.word3.content]).toEqual(['Create.', 'Animate.', 'Inspire.']);
+    expect(of('signature').texts.headline.content.replace('\n', ' ')).toBe('Motion without limits.');
     expect(p.theme).toEqual({ background: '#080A10', foreground: '#F5F7FF', accent: '#B8FF35', secondary: '#6574FF', surface: '#151925' });
   });
 });
@@ -43,10 +46,20 @@ describe('schema guards', () => {
     expect(def.schema.safeParse(tooLong).success).toBe(false);
   });
 
-  it('rejects unknown scene order and bad colors', () => {
+  it('accepts any order and repetition, rejects unknown types, duplicate ids and bad colors', () => {
     const p = make();
-    expect(def.schema.safeParse({ ...p, scenes: [p.scenes[1], p.scenes[0], p.scenes[2], p.scenes[3]] }).success).toBe(false);
+    expect(def.schema.safeParse({ ...p, scenes: [p.scenes[3], p.scenes[1], p.scenes[0], p.scenes[2]] }).success).toBe(true);
+    expect(def.schema.safeParse({ ...p, scenes: [p.scenes[0], { ...p.scenes[0], id: 'impact-2' }] }).success).toBe(true);
+    expect(def.schema.safeParse({ ...p, scenes: [{ ...p.scenes[0], type: 'zoom' }] }).success).toBe(false);
+    expect(def.schema.safeParse({ ...p, scenes: [p.scenes[0], p.scenes[0]] }).success).toBe(false);
     expect(def.schema.safeParse(setAtPath(p, ['theme', 'accent'], 'lime')).success).toBe(false);
+  });
+
+  it('a scene type keeps its own data shape wherever it is placed', () => {
+    const p = make();
+    // An energy instance needs energy props, even in the first slot.
+    const { props: _props, ...energyWithoutProps } = p.scenes[1] as Extract<AnyScene, { type: 'energy' }>;
+    expect(def.schema.safeParse({ ...p, scenes: [energyWithoutProps, p.scenes[0]] }).success).toBe(false);
   });
 });
 

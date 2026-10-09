@@ -1,25 +1,4 @@
-import { secondsToFrames, type FieldPath, type MotionSceneBase } from '@lms/shared';
-
-export interface SceneRange {
-  id: string;
-  index: number;
-  from: number;
-  durationInFrames: number;
-}
-
-/** Sequential scene ranges in frames for the given fps. Shared by composition, timeline and renderer. */
-export const computeSceneRanges = (scenes: readonly Pick<MotionSceneBase, 'id' | 'duration'>[], fps: number): SceneRange[] => {
-  let from = 0;
-  return scenes.map((scene, index) => {
-    const durationInFrames = secondsToFrames(scene.duration, fps);
-    const range = { id: scene.id, index, from, durationInFrames };
-    from += durationInFrames;
-    return range;
-  });
-};
-
-export const totalFrames = (ranges: readonly SceneRange[]): number =>
-  ranges.reduce((acc, r) => acc + r.durationInFrames, 0);
+import type { FieldPath } from '@lms/shared';
 
 /** A bounded numeric property the timeline may edit by dragging (seconds). */
 export interface TimingHandle {
@@ -31,7 +10,11 @@ export interface TimingHandle {
 export interface TimelineSceneBlock {
   id: string;
   label: string;
+  /** Position in the video (enabled scenes only). */
   index: number;
+  /** Scene definition id and display name ("Impact"), for type badges. */
+  typeId?: string;
+  typeLabel?: string;
   from: number;
   durationInFrames: number;
   /** Editable target selected when the block is clicked. */

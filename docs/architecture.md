@@ -46,6 +46,16 @@ Cada template expõe dois entry points:
 
 A frequência de frames (30/60 Hz) fica em um store separado (`stores/playback.ts`), assinado só pelo transporte, pela timeline e pelo playhead — o inspector e a sidebar não re-renderizam durante a reprodução.
 
+## Composição dinâmica de cenas
+
+Um template oferece **tipos de cena** (`sceneTypes`: Impact, Energy, Transformation e Signature no Signature / 001); o projeto guarda uma lista ordenada de **instâncias** (`project.scenes`), cada uma com `id` único, `type`, `name`, `enabled`, `duration` e seus próprios dados. A animação é compartilhada pelo tipo; o estado editável nunca é.
+
+- **Tempo**: `computeSceneRanges` deriva os offsets da ordem da lista (soma das durações habilitadas anteriores). Composição, timeline, HUD, metadados do render e editor usam a mesma função — não há timestamps fixos.
+- **Remotion**: a composição percorre os ranges, monta cada instância num `<Sequence key={scene.id}>` e escolhe a view por `scene.type`. Dentro da `Sequence` o frame é local, então uma cena duplicada ou movida sempre começa do início da sua animação. A primeira cena do vídeo não aplica transição de entrada (não há nada por baixo).
+- **Duração**: cada tipo declara limites e uma estratégia (`hold`: entradas fixas, saída ancorada ao fim, a sobra vira sustentação; `proportional`: relógio normalizado dentro de limites estreitos; `fixed`). O inspector mostra a regra junto do controle.
+- **Editor**: operações estruturais (adicionar, duplicar, excluir, mover, renomear, ativar/desativar, duração) são funções puras do SDK aplicadas pelo store, validadas pelo schema e registradas no mesmo histórico de desfazer/refazer (`Ctrl+Z`, `Ctrl+Shift+Z`; `Ctrl+D` duplica; `Delete` exclui a cena selecionada — atalhos ignorados enquanto se digita). Excluir uma cena com conteúdo personalizado pede confirmação; cenas intactas saem direto (desfazer as recupera).
+- **Targets**: ids `<instância>.<elemento>`, então seleção no canvas, inspector e timeline apontam para a ocorrência certa mesmo com a mesma animação repetida.
+
 ## Seleção no canvas
 
 A composição marca nós com `data-lms-target="<targetId>"`. O Player renderiza no mesmo DOM do editor, então um clique sobe pela árvore até o alvo mais interno conhecido. O destaque é um `<style>` injetado (`outline` compensado pela escala do Player) — a composição não recebe nenhum estado do editor, e o atributo não tem efeito visual no MP4.
@@ -65,6 +75,7 @@ Toda animação é função pura do frame: tempo em segundos (`frame / fps`), sp
 ## Persistência
 
 - `projects/<id>/project.json`: documento completo com `schemaVersion` (envelope) e `templateVersion` (template). Escritas são atômicas (arquivo temporário + rename).
-- Leitura passa por `migrateEnvelope` → `template.migrate` (se a versão do template mudou) → schema → verificação de referências de assets. Projetos migrados são regravados.
+- Leitura passa por `migrateEnvelope` → `template.migrate` (se a versão do template mudou) → schema → verificação de referências de assets. Projetos migrados são regravados, e o documento original fica ao lado como `project.backup-v<schema>-<versão do template>.json` (gravado uma única vez).
+- Schema v2: a migração v1 → v2 converte as cenas fixas em instâncias (`type` = id antigo, `enabled: true`) mantendo o id — target ids antigos e todos os valores continuam válidos.
 - Uploads: o tipo é identificado pelos *magic bytes* (PNG, JPEG, WebP, GIF, MP3, WAV, M4A, OGG), copiados para `assets/<assetId>.<ext>` e registrados em `project.assets`. Referências usam `assetId`, nunca caminhos.
 - `localStorage` guarda apenas o último projeto aberto (conveniência).

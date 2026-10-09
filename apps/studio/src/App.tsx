@@ -3,6 +3,7 @@ import { Loader2 } from 'lucide-react';
 import { useEditor } from './stores/editor';
 import { usePlayback } from './stores/playback';
 import { useProjectModel } from './editor/useProjectModel';
+import { sceneCommands } from './editor/sceneCommands';
 import { TopBar } from './components/TopBar';
 import { Toasts, isTypingTarget } from './components/ui';
 import { LeftSidebar } from './panels/LeftSidebar';
@@ -32,6 +33,23 @@ const useShortcuts = (durationInFrames: number, fps: number) => {
       if (mod && e.key.toLowerCase() === 'y') {
         e.preventDefault();
         ed.redo();
+        return;
+      }
+      if (mod && e.key.toLowerCase() === 'd') {
+        // Also blocks the browser's "bookmark page" shortcut while editing.
+        e.preventDefault();
+        const sceneId = sceneCommands.selectedSceneId();
+        if (sceneId) sceneCommands.duplicate(sceneId);
+        return;
+      }
+      if (e.key === 'Delete' && !mod) {
+        // Only when the scene itself is selected: Delete on a text/graphic must not
+        // silently remove the whole scene around it.
+        const sceneId = sceneCommands.selectedSceneId();
+        if (sceneId && ed.selectedTargetId === sceneId) {
+          e.preventDefault();
+          sceneCommands.remove(sceneId);
+        }
         return;
       }
       switch (e.key) {

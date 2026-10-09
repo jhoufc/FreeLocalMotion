@@ -13,8 +13,10 @@ interface TemplateDefinition<P extends MotionProject> {
   tags: readonly string[];
   formats: readonly Format[]; // 'portrait' | 'landscape'
   schema: z.ZodType<P>;       // schema COMPLETO do projeto (envelope + específicos)
+  sceneTypes: readonly SceneDefinition[]; // catálogo de animações reutilizáveis (ver "Cenas")
 
   createDefaults(init: ProjectInit): P;
+  createScene(type: string, init: { id; name }): P['scenes'][number]; // instância nova com os padrões do tipo
   migrate?(raw, fromVersion): Record<string, unknown>;
   getMetadata(project: P): CompositionMetadata;      // width, height, fps, durationInFrames
   getEditableTargets(project: P): EditableTarget[];  // o que o inspector pode editar
@@ -28,7 +30,27 @@ interface TemplateModule<P> extends TemplateDefinition<P> {
 
 - `defineTemplate(def)` valida o id e os formatos e preserva a inferência de tipos.
 - `defineTemplateModule(def, Component)` junta definição e composição em um `AnyTemplateModule` para o registry. O registry só entrega a um template projetos validados pelo schema dele, o que torna esse alargamento de tipo seguro.
-- `sequentialMetadata(project)` cobre o caso comum: dimensões do formato + soma das durações das cenas.
+- `sequentialMetadata(project)` cobre o caso comum: dimensões do formato + soma das durações das cenas habilitadas.
+
+## Cenas: definição × instância
+
+Uma **Scene Definition** (`sceneTypes[i]`) é a animação: id, nome, descrição, duração padrão/mínima/máxima, estratégia de timing e `heroTime` para miniaturas. O componente React correspondente fica na composição do template (mapa `type → view`).
+
+Uma **Scene Instance** (`project.scenes[i]`) é uma ocorrência: `id` único, `type`, `name`, `enabled`, `duration` e todos os dados editáveis. A ordem do vídeo é a ordem do array. Editar uma instância nunca afeta outra; a animação é compartilhada pelo tipo.
+
+Funções puras (`@lms/template-sdk`, usadas igualmente por editor, preview, persistência e render):
+
+| Função | O que faz |
+|---|---|
+| `computeSceneRanges(scenes, fps)` | `from(n) = Σ durações das cenas habilitadas anteriores`; cada range traz `index` (no array) e `order` (no vídeo) |
+| `projectDurationInFrames`, `totalFrames` | duração total (só cenas habilitadas) |
+| `sceneAtFrame`, `toLocalFrame` | cena ativa e frame local a partir do frame global |
+| `findScene`, `findSceneIndex` | localizar por id |
+| `insertScene`, `duplicateScene`, `removeScene`, `moveScene` | operações estruturais imutáveis; `duplicateScene` faz cópia profunda, novo id e nome numerado, logo após a original |
+| `renameScene`, `setSceneDuration`, `setSceneEnabled` | com as mesmas regras do schema (nome não vazio, limites do tipo, ao menos uma cena ativa) |
+| `heroFrameOf(def, duration, fps)` | frame local representativo para miniaturas |
+
+Regras do envelope para a lista (`scenesArray(schemaDaCena)`): 1 a `MAX_SCENES` (48) instâncias, ids únicos, ao menos uma habilitada.
 
 ## Envelope do projeto (`@lms/shared`)
 
@@ -36,18 +58,18 @@ Campos que todo projeto tem, para qualquer template:
 
 ```ts
 {
-  schemaVersion: 1, id, name, templateId, templateVersion,
+  schemaVersion: 2, id, name, templateId, templateVersion,
   format: 'portrait' | 'landscape', fps: 30 | 60,
   theme: { background, foreground, accent, secondary, surface },  // hex
   audio: { assetId | null, volume, fadeIn, fadeOut },
   assets: AssetRef[],
-  scenes: Scene[],          // cada cena: id, name, duration (s), background, palette, layout
+  scenes: Scene[],          // instâncias em ordem: id (único), type, name, enabled, duration (s), background, palette, layout
   globals: Record<string, unknown>,
   createdAt, updatedAt
 }
 ```
 
-Blocos reutilizáveis para compor o schema do seu template: `textElementSchema`, `graphicElementSchema`, `backgroundSchema` (+ `createBackground`), `paletteOverrideSchema` (+ `emptyPaletteOverride`), `sceneLayoutSchema`, `sceneBaseShape`, `projectBaseShape`.
+Blocos reutilizáveis para compor o schema do seu template: `textElementSchema`, `graphicElementSchema`, `backgroundSchema` (+ `createBackground`), `paletteOverrideSchema` (+ `emptyPaletteOverride`), `sceneLayoutSchema`, `sceneBaseShape`, `scenesArray`, `projectBaseShape`.
 
 **Cores** são `ColorRef`: hex (`#RRGGBB[AA]`) ou token do tema (`$accent`). Tokens fazem cenas herdarem a paleta; `palette` por cena sobrescreve tokens individualmente (`null` = herdar). Use `resolveColor(ref, mergePalette(theme, scene.palette))`.
 
@@ -59,10 +81,10 @@ Um `EditableTarget` é qualquer coisa selecionável:
 
 ```ts
 {
-  id: 'impact.lineA',            // também usado em data-lms-target na composição
+  id: 'impact-3f9a2c.lineA',      // '<id da instância>.<elemento>'; também em data-lms-target
   label: 'Headline — linha 1',
   kind: 'project' | 'scene' | 'text' | 'graphic' | 'overlay',
-  sceneId: 'impact' | null,
+  sceneId: 'impact-3f9a2c' | null,  // id da instância
   visibilityPath?: ['scenes', 0, 'texts', 'lineA', 'visible'],
   sections: [{ id: 'content', label: 'Conteúdo', fields: FieldDescriptor[] }],
 }
@@ -91,7 +113,7 @@ Descritores (construa com `field.*`):
 ```ts
 interface TimelineModel {
   fps; durationInFrames;
-  scenes: { id, label, index, from, durationInFrames, targetId, duration?: { path, min, max } }[];
+  scenes: { id, label, index, typeId?, typeLabel?, from, durationInFrames, targetId, duration?: { path, min, max } }[];
   layers: { id, label, kind, sceneId, targetId, clips[], markers[], hidden, delay?: { path, min, max } }[];
 }
 ```

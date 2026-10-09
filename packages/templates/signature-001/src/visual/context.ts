@@ -16,6 +16,8 @@ export interface SceneEnv<S extends AnyScene = AnyScene> {
   fps: number;
   color: (ref: ColorRef) => string;
   alpha: (ref: ColorRef, a: number) => string;
+  /** Editable target id of an element of this instance (`data-lms-target`). */
+  target: (key: string) => string;
 }
 
 export const createSceneEnv = <S extends AnyScene>(
@@ -40,5 +42,6 @@ export const createSceneEnv = <S extends AnyScene>(
     fps,
     color,
     alpha: (ref, a) => withAlpha(color(ref), a),
+    target: (key) => `${scene.id}.${key}`,
   };
 };

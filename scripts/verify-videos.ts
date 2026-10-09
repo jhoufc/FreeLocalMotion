@@ -7,14 +7,18 @@
  *
  *   pnpm verify:videos                       # newest portrait + landscape in exports/samples
  *   pnpm verify:videos path/to/a.mp4 b.mp4   # explicit files
+ *
+ * When `<file>.project.json` exists (written by `pnpm render:composition`), the video is
+ * checked against that exact project — scene order, repetitions, durations — instead of
+ * the template defaults.
  */
 import { execFileSync } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { FORMAT_SPECS, type Format } from '@lms/shared';
+import { FORMAT_SPECS, type Format, type MotionProject } from '@lms/shared';
 import { templateDefinitions } from '@lms/catalog/definitions';
-import { computeSceneRanges } from '@lms/template-sdk';
+import { computeSceneRanges, heroFrameOf, sceneTypeOf } from '@lms/template-sdk';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const samplesDir = path.join(root, 'exports/samples');
@@ -40,7 +44,6 @@ interface Probe {
   format: { format_name: string; duration: string; size: string; bit_rate: string };
 }
 
-const template = templateDefinitions.list()[0]!;
 let failures = 0;
 const check = (ok: boolean, label: string, detail: string) => {
   console.log(`  ${ok ? '✔' : '✘'} ${label.padEnd(26)} ${detail}`);
@@ -51,8 +54,16 @@ for (const file of files) {
   console.log(`\n${path.relative(root, file)}`);
   const format: Format = /portrait/.test(file) ? 'portrait' : 'landscape';
   const spec = FORMAT_SPECS[format];
-  const defaults = template.createDefaults({ id: 'verify', name: 'verify', format, now: '' });
+  const sidecar = `${file}.project.json`;
+  const fromSidecar = fs.existsSync(sidecar);
+  const template = fromSidecar
+    ? templateDefinitions.get((JSON.parse(fs.readFileSync(sidecar, 'utf8')) as MotionProject).templateId)
+    : templateDefinitions.list()[0]!;
+  const defaults: MotionProject = fromSidecar
+    ? (JSON.parse(fs.readFileSync(sidecar, 'utf8')) as MotionProject)
+    : template.createDefaults({ id: 'verify', name: 'verify', format, now: '' });
   const meta = template.getMetadata(defaults);
+  console.log(`    reference: ${fromSidecar ? `project sidecar (${defaults.scenes.filter((s) => s.enabled).length} enabled scenes)` : 'template defaults'}`);
 
   const probe = JSON.parse(execFileSync('ffprobe', ['-v', 'error', '-print_format', 'json', '-show_streams', '-show_format', file], { encoding: 'utf8' })) as Probe;
   const v = probe.streams.find((s) => s.codec_type === 'video');
@@ -73,9 +84,13 @@ for (const file of files) {
 
   // Representative frames: the settled moment of each scene plus each transition midpoint.
   const ranges = computeSceneRanges(defaults.scenes, meta.fps);
+  const sceneLabel = (i: number) => `${defaults.scenes[i]!.name} [${defaults.scenes[i]!.type}]`;
   const picks = [
-    ...ranges.map((r) => ({ frame: r.from + Math.round(r.durationInFrames * 0.6), label: `${defaults.scenes[r.index]!.id} (settled)` })),
-    ...ranges.slice(1).map((r) => ({ frame: r.from + 4, label: `${defaults.scenes[r.index]!.id} (transition in)` })),
+    ...ranges.map((r) => {
+      const scene = defaults.scenes[r.index]!;
+      return { frame: r.from + heroFrameOf(sceneTypeOf(template, scene.type), scene.duration, meta.fps), label: `${sceneLabel(r.index)} (settled)` };
+    }),
+    ...ranges.slice(1).map((r) => ({ frame: r.from + 4, label: `${sceneLabel(r.index)} (transition in)` })),
   ].sort((a, b) => a.frame - b.frame);
   const select = picks.map((p) => `eq(n\\,${p.frame})`).join('+');
   const stats = execFileSync(

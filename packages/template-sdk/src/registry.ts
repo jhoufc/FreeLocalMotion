@@ -45,6 +45,22 @@ export const createTemplateRegistry = <T extends AnyTemplateDefinition>(initial:
       if (defaults.templateId !== template.id) {
         throw new TemplateRegistryError(`Template "${template.id}" defaults declare templateId "${defaults.templateId}"`);
       }
+      // Every scene type must yield an instance the schema accepts in any position.
+      for (const type of template.sceneTypes) {
+        const scene = template.createScene(type.id, { id: `registry-${type.id}`, name: type.name });
+        const withScene = { ...defaults, scenes: [scene, ...defaults.scenes] };
+        const r = template.schema.safeParse(withScene);
+        if (!r.success || scene.type !== type.id) {
+          throw new TemplateRegistryError(
+            `Template "${template.id}" scene type "${type.id}" creates an invalid instance${r.success ? '' : `: ${r.error.issues[0]?.path.join('.')}: ${r.error.issues[0]?.message}`}`,
+          );
+        }
+      }
+      for (const scene of defaults.scenes) {
+        if (!template.sceneTypes.some((t) => t.id === scene.type)) {
+          throw new TemplateRegistryError(`Template "${template.id}" defaults use undeclared scene type "${scene.type}"`);
+        }
+      }
     }
     templates.set(template.id, template);
   };

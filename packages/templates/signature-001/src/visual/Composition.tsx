@@ -3,7 +3,7 @@ import { AbsoluteFill, Html5Audio, Sequence, interpolate, useCurrentFrame, useVi
 import { computeFrameLayout, ease, progress, round, type FrameLayout } from '@lms/motion-core';
 import { withAlpha } from '@lms/shared';
 import { computeSceneRanges, useAssets, type TemplateComponentProps } from '@lms/template-sdk';
-import type { AnyScene, SceneId, SignatureProject } from '../schema';
+import type { AnyScene, SceneType, SignatureProject } from '../schema';
 import { TRANSITION_IN, nextSceneTransition } from '../timing';
 import { energyCore } from './art';
 import { createSceneEnv, type SceneEnv } from './context';
@@ -14,8 +14,11 @@ import { ImpactSceneView } from './scenes/Impact';
 import { SignatureSceneView } from './scenes/Signature';
 import { TransformationSceneView } from './scenes/Transformation';
 
-/** Scene id -> view. Adding a scene to this template means adding one entry here. */
-const VIEWS: { [K in SceneId]: ComponentType<{ env: SceneEnv<Extract<AnyScene, { id: K }>> }> } = {
+/**
+ * Scene type -> view. A view is the reusable animation; every instance of the type mounts
+ * it with its own data. Adding a scene type means adding one entry here.
+ */
+const VIEWS: { [K in SceneType]: ComponentType<{ env: SceneEnv<Extract<AnyScene, { type: K }>> }> } = {
   impact: ImpactSceneView,
   energy: EnergySceneView,
   transformation: TransformationSceneView,
@@ -23,7 +26,7 @@ const VIEWS: { [K in SceneId]: ComponentType<{ env: SceneEnv<Extract<AnyScene, {
 };
 
 /** Transition-in treatments, composited over the previous scene's tail. */
-const transitionIn = (id: SceneId, t: number, L: FrameLayout, accent: string): { clip?: string; edge?: ReactNode } => {
+const transitionIn = (id: SceneType, t: number, L: FrameLayout, accent: string): { clip?: string; edge?: ReactNode } => {
   const dur = TRANSITION_IN[id];
   if (dur <= 0 || t >= dur) return {};
   if (id === 'transformation') {
@@ -74,14 +77,19 @@ const transitionIn = (id: SceneId, t: number, L: FrameLayout, accent: string): {
   return {};
 };
 
-const SceneHost = ({ project, index, L }: { project: SignatureProject; index: number; L: FrameLayout }) => {
+/**
+ * Hosts one scene instance. Inside its <Sequence>, `useCurrentFrame()` is local to the
+ * instance, so a scene animates identically wherever it sits on the timeline.
+ */
+const SceneHost = ({ project, index, hasPrevious, L }: { project: SignatureProject; index: number; hasPrevious: boolean; L: FrameLayout }) => {
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
   const scene = project.scenes[index]!;
   const t = frame / fps;
   const env = createSceneEnv(project, scene, index, L, t, fps);
-  const View = VIEWS[scene.id] as ComponentType<{ env: SceneEnv }>;
-  const tr = transitionIn(scene.id, t, L, env.palette.accent);
+  const View = VIEWS[scene.type] as ComponentType<{ env: SceneEnv }>;
+  // The opening scene has nothing underneath to transition from.
+  const tr = hasPrevious ? transitionIn(scene.type, t, L, env.palette.accent) : {};
   return (
     <AbsoluteFill style={{ clipPath: tr.clip, overflow: 'hidden' }}>
       <View env={env} />
@@ -118,15 +126,16 @@ export const SignatureComposition = ({ project }: TemplateComponentProps<Signatu
   const { fps, width, height, durationInFrames } = useVideoConfig();
   const L = computeFrameLayout(width, height);
   const ranges = computeSceneRanges(project.scenes, fps);
+  const sequence = ranges.map((r) => project.scenes[r.index]!);
 
   return (
     <AbsoluteFill style={{ background: project.theme.background, overflow: 'hidden' }}>
-      {project.scenes.map((scene, i) => {
-        const r = ranges[i]!;
-        const tail = Math.round(nextSceneTransition(project.scenes, i) * fps);
+      {ranges.map((r) => {
+        const scene = project.scenes[r.index]!;
+        const tail = Math.round(nextSceneTransition(sequence, r.order) * fps);
         return (
           <Sequence key={scene.id} from={r.from} durationInFrames={r.durationInFrames + tail} name={scene.name} layout="none">
-            <SceneHost project={project} index={i} L={L} />
+            <SceneHost project={project} index={r.index} hasPrevious={r.order > 0} L={L} />
           </Sequence>
         );
       })}

@@ -1,15 +1,15 @@
-import { memo, useDeferredValue, useMemo, useRef, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import { Player, Thumbnail } from '@remotion/player';
 import { Copy, Download, Eye, EyeOff, FolderOpen, Layers, LayoutTemplate, Plus, Trash2, Upload, Clapperboard } from 'lucide-react';
 import { getAtPath, type MotionProject } from '@lms/shared';
 import { TemplateStage, templateModules, type StageProps } from '@lms/catalog';
-import type { SceneRange } from '@lms/template-sdk';
 import { useEditor } from '../stores/editor';
 import { usePlayback } from '../stores/playback';
 import { sceneAtFrame, type ProjectModel } from '../editor/useProjectModel';
 import { api } from '../api/client';
 import { KindIcon } from './KindIcon';
 import { NewProjectDialog } from '../components/NewProjectDialog';
+import { SceneList } from './SceneList';
 
 type Tab = 'scene' | 'templates' | 'projects';
 
@@ -17,38 +17,16 @@ type Tab = 'scene' | 'templates' | 'projects';
 /* Scenes + layers                                                     */
 /* ------------------------------------------------------------------ */
 
-const SceneThumb = memo(({ project, frame, portrait }: { project: MotionProject; frame: number; portrait: boolean }) => {
-  const meta = templateModules.get(project.templateId).getMetadata(project);
-  const inputProps = useMemo<StageProps>(() => ({ project, assetBaseUrl: '' }), [project]);
-  return (
-    <div className={`thumb ${portrait ? 'portrait' : ''}`}>
-      <Thumbnail
-        component={TemplateStage}
-        inputProps={inputProps}
-        compositionWidth={meta.width}
-        compositionHeight={meta.height}
-        durationInFrames={meta.durationInFrames}
-        fps={meta.fps}
-        frameToDisplay={Math.min(meta.durationInFrames - 1, frame)}
-        style={{ width: '100%', height: '100%' }}
-      />
-    </div>
-  );
-});
-
 const ScenesTab = ({ project, model }: { project: MotionProject; model: ProjectModel }) => {
   const selected = useEditor((s) => s.selectedTargetId);
   const select = useEditor((s) => s.select);
   const update = useEditor((s) => s.update);
   const current = usePlayback((s) => sceneAtFrame(model.ranges, s.frame)?.id);
-  const deferred = useDeferredValue(project);
   const selectedTarget = model.targetsById.get(selected);
   const activeSceneId = selectedTarget?.sceneId ?? current ?? project.scenes[0]!.id;
+  const activeScene = project.scenes.find((s) => s.id === activeSceneId);
   const layers = model.targets.filter((t) => t.sceneId === activeSceneId && t.kind !== 'scene');
   const globals = model.targets.filter((t) => t.sceneId === null);
-
-  // Thumbnails show each scene at a moment where its typography has settled.
-  const heroFrame = (r: SceneRange) => r.from + Math.round(r.durationInFrames * 0.62);
 
   const LayerRow = ({ id }: { id: string }) => {
     const t = model.targetsById.get(id)!;
@@ -80,38 +58,14 @@ const ScenesTab = ({ project, model }: { project: MotionProject; model: ProjectM
       <div className="section-title">
         <span>Cenas</span>
         <span className="mono" style={{ letterSpacing: 0 }}>
-          {(model.durationInFrames / model.fps).toFixed(1)}s
+          {model.ranges.length}/{project.scenes.length} · {(model.durationInFrames / model.fps).toFixed(1)}s
         </span>
       </div>
-      {project.scenes.map((scene, i) => {
-        const r = model.ranges[i]!;
-        return (
-          <div
-            key={scene.id}
-            className={`scene-card ${activeSceneId === scene.id ? 'on' : ''} ${current === scene.id ? 'playing' : ''}`}
-            onClick={() => {
-              select(scene.id);
-              usePlayback.getState().seek(r.from);
-            }}
-          >
-            <SceneThumb project={deferred} frame={heroFrame(r)} portrait={project.format === 'portrait'} />
-            <div className="meta">
-              <b>
-                <span className="mono" style={{ color: 'var(--accent)', marginRight: 6 }}>
-                  {String(i + 1).padStart(2, '0')}
-                </span>
-                {scene.name}
-              </b>
-              <span>
-                {(r.from / model.fps).toFixed(1)}s → {((r.from + r.durationInFrames) / model.fps).toFixed(1)}s · {scene.duration.toFixed(1)}s
-              </span>
-            </div>
-          </div>
-        );
-      })}
+      <SceneList project={project} model={model} activeSceneId={activeSceneId} />
 
       <div className="section-title">
         <span>Elementos da cena</span>
+        <span style={{ textTransform: 'none', letterSpacing: 0, fontWeight: 500 }}>{activeScene?.name}</span>
       </div>
       <div className={`layer ${selected === activeSceneId ? 'on' : ''}`} onClick={() => select(activeSceneId)}>
         <span className="kind kind-scene">

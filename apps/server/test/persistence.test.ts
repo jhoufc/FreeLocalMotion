@@ -3,6 +3,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { setAtPath, type MotionProject } from '@lms/shared';
+import { duplicateScene, insertScene, moveScene } from '@lms/template-sdk';
 import { templateDefinitions } from '@lms/catalog/definitions';
 import { HttpError, ProjectStore } from '../src/projects/store';
 
@@ -33,6 +34,49 @@ describe('ProjectStore', () => {
     const reopened = await store.get(created.id);
     expect(reopened).toEqual(created);
     expect((await store.list()).map((p) => p.id)).toEqual([created.id]);
+  });
+
+  it('8: saves and reopens a project with duplicated, reordered scenes', async () => {
+    const p = await store.create('signature-001', { format: 'portrait' });
+    const template = templateDefinitions.get('signature-001');
+    let edited = duplicateScene(p, 'impact').project;
+    const copyId = edited.scenes[1]!.id;
+    edited = setAtPath(edited, ['scenes', 1, 'texts', 'lineA', 'content'], '100% LOCAL');
+    edited = moveScene(edited, 'signature', 0);
+    edited = insertScene(edited, template.createScene('energy', { id: 'energy-extra', name: 'Energy #2' }));
+    await store.save(p.id, edited);
+    const reopened = await store.get(p.id);
+    expect(reopened.scenes.map((s) => s.id)).toEqual(['signature', 'impact', copyId, 'energy', 'transformation', 'energy-extra']);
+    const text = (id: string) => (reopened.scenes.find((s) => s.id === id) as unknown as { texts: { lineA: { content: string } } }).texts.lineA.content;
+    expect(text(copyId)).toBe('100% LOCAL');
+    expect(text('impact')).toBe('The Future');
+    expect(template.getMetadata(reopened).durationInFrames).toBe(450 + 90 + 90);
+  });
+
+  it('9: migrates a 1.0.0 project on open, keeps a backup and preserves its content', async () => {
+    const id = 'p-legacy0001';
+    const current = templateDefinitions.get('signature-001').createDefaults({ id, name: 'Legacy', format: 'landscape', now: '2026-01-01T00:00:00.000Z' });
+    const legacy = {
+      ...structuredClone(current),
+      schemaVersion: 1,
+      templateVersion: '1.0.0',
+      scenes: current.scenes.map(({ type: _t, enabled: _e, ...rest }) => ({ ...rest, name: rest.id === 'energy' ? 'Benefício' : rest.name })),
+    };
+    await fs.mkdir(path.join(dir, id), { recursive: true });
+    await fs.writeFile(path.join(dir, id, 'project.json'), JSON.stringify(legacy));
+    const opened = await store.get(id);
+    expect(opened.schemaVersion).toBe(2);
+    expect(opened.scenes.map((s) => [s.id, s.type, s.name])).toEqual([
+      ['impact', 'impact', 'Impact'],
+      ['energy', 'energy', 'Benefício'],
+      ['transformation', 'transformation', 'Transformation'],
+      ['signature', 'signature', 'Signature'],
+    ]);
+    const files = await fs.readdir(path.join(dir, id));
+    expect(files).toContain('project.backup-v1-1.0.0.json');
+    expect(JSON.parse(await fs.readFile(path.join(dir, id, 'project.backup-v1-1.0.0.json'), 'utf8'))).toEqual(legacy);
+    expect(JSON.parse(await fs.readFile(path.join(dir, id, 'project.json'), 'utf8')).schemaVersion).toBe(2);
+    expect((await store.list()).map((p) => p.id)).toContain(id);
   });
 
   it('saves validated edits and rejects invalid documents without touching disk', async () => {

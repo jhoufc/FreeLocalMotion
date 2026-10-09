@@ -55,7 +55,7 @@ const LightLine = ({ env, start }: { env: SceneEnv<ImpactScene>; start: number }
     ? { left: pos - trail, top: 0, width: trail, height: L.height, background: `linear-gradient(90deg, transparent, ${withAlpha(color, 0.2 * glow)})` }
     : { top: pos - trail, left: 0, height: trail, width: L.width, background: `linear-gradient(180deg, transparent, ${withAlpha(color, 0.2 * glow)})` };
   return (
-    <div data-lms-target="impact.lightLine" style={{ position: 'absolute', inset: 0, opacity: el.opacity, mixBlendMode: 'screen' }}>
+    <div data-lms-target={env.target('lightLine')} style={{ position: 'absolute', inset: 0, opacity: el.opacity, mixBlendMode: 'screen' }}>
       <div style={{ position: 'absolute', ...trailStyle }} />
       <div
         style={{
@@ -181,10 +181,10 @@ const DepthField = ({ env, revealStart, exitStart }: { env: SceneEnv<ImpactScene
   const appear = progress(t, revealStart, 0.25);
   return (
     <div style={{ position: 'absolute', inset: 0, clipPath: clip, opacity: appear * fadeOut }}>
-      <div data-lms-target="impact.geometry" style={{ position: 'absolute', inset: 0 }}>
+      <div data-lms-target={env.target('geometry')} style={{ position: 'absolute', inset: 0 }}>
         {frames}
       </div>
-      <div data-lms-target="impact.particles" style={{ position: 'absolute', inset: 0 }}>
+      <div data-lms-target={env.target('particles')} style={{ position: 'absolute', inset: 0 }}>
         {dots}
       </div>
     </div>
@@ -311,7 +311,7 @@ export const ImpactSceneView = ({ env }: { env: SceneEnv<ImpactScene> }) => {
         >
           {scene.texts.kicker.visible ? (
             <div
-              data-lms-target="impact.kicker"
+              data-lms-target={env.target('kicker')}
               style={{ display: 'flex', alignItems: 'center', gap: 18 * u, marginBottom: 34 * u, height: kicker.layout.height }}
             >
               <div style={{ width: 54 * u * kickRule, height: 2 * u, background: env.color(scene.texts.kicker.color) }} />
@@ -333,7 +333,7 @@ export const ImpactSceneView = ({ env }: { env: SceneEnv<ImpactScene> }) => {
           ) : null}
 
           <TextBlock
-            targetId="impact.lineA"
+            targetId={env.target('lineA')}
             text={a}
             color={env.color(scene.texts.lineA.color)}
             align={align}
@@ -342,7 +342,7 @@ export const ImpactSceneView = ({ env }: { env: SceneEnv<ImpactScene> }) => {
           />
           <div style={{ height: gap }} />
           <TextBlock
-            targetId="impact.lineB"
+            targetId={env.target('lineB')}
             text={b}
             color={env.color(scene.texts.lineB.color)}
             align={align}

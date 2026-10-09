@@ -3,14 +3,25 @@ import {
   computeSceneRanges,
   defineTemplate,
   field,
+  isDurationEditable,
   sequentialMetadata,
   type EditableTarget,
   type FieldSection,
+  type SceneDefinition,
   type TimelineLayer,
   type TimelineModel,
 } from '@lms/template-sdk';
-import { createSignatureDefaults } from './defaults';
-import { SCENE_DURATION_LIMITS, TEMPLATE_ID, TEMPLATE_VERSION, signatureProjectSchema, type AnyScene, type SignatureProject } from './schema';
+import { SCENE_TYPE_NAMES, createSignatureDefaults, createSignatureScene } from './defaults';
+import {
+  SCENE_DURATION_LIMITS,
+  SCENE_TYPES,
+  TEMPLATE_ID,
+  TEMPLATE_VERSION,
+  signatureProjectSchema,
+  type AnyScene,
+  type SceneType,
+  type SignatureProject,
+} from './schema';
 import { CHOREO, entranceAt, transformationToScene } from './timing';
 
 export const PROCEDURAL_VARIANTS = [
@@ -36,6 +47,58 @@ const STRETCHES = [
 ];
 
 /* ------------------------------------------------------------------ */
+/* Scene catalog: the four reusable animations of Signature / 001.     */
+/* ------------------------------------------------------------------ */
+
+const HOLD_NOTE = 'Entradas mantêm o timing desenhado e a saída fica ancorada ao fim: a duração extra estende a sustentação.';
+
+interface SceneInfo {
+  description: string;
+  strategy: SceneDefinition['duration']['strategy'];
+  note: string;
+  heroTime: number;
+}
+
+const SCENE_INFO: Record<SceneType, SceneInfo> = {
+  impact: {
+    description: 'Abertura: linha de luz revela geometria em profundidade e uma headline em duas linhas.',
+    strategy: 'hold',
+    note: HOLD_NOTE,
+    heroTime: 1.9,
+  },
+  energy: {
+    description: 'Núcleo pulsante, anéis e grade de pontos com lead + headline.',
+    strategy: 'hold',
+    note: HOLD_NOTE,
+    heroTime: 1.9,
+  },
+  transformation: {
+    description: 'Create / Animate / Inspire: três palavras em sequência com a câmera atravessando planos.',
+    strategy: 'proportional',
+    note: 'As três palavras formam um único movimento de câmera: o ritmo inteiro escala com a duração, limitado a 0,8×–1,5× do original.',
+    heroTime: 2.5,
+  },
+  signature: {
+    description: 'Encerramento: fragmentos convergem para a assinatura geométrica, com headline e subtítulo.',
+    strategy: 'hold',
+    note: HOLD_NOTE,
+    heroTime: 3.1,
+  },
+};
+
+const DEFAULT_DURATION: Record<SceneType, number> = { impact: 3, energy: 3, transformation: 4, signature: 5 };
+
+export const SIGNATURE_SCENE_TYPES: readonly SceneDefinition[] = SCENE_TYPES.map((id) => ({
+  id,
+  name: SCENE_TYPE_NAMES[id],
+  description: SCENE_INFO[id].description,
+  heroTime: SCENE_INFO[id].heroTime,
+  duration: { default: DEFAULT_DURATION[id], ...SCENE_DURATION_LIMITS[id], strategy: SCENE_INFO[id].strategy, note: SCENE_INFO[id].note },
+}));
+
+const sceneTypeDef = (type: SceneType): SceneDefinition => SIGNATURE_SCENE_TYPES.find((t) => t.id === type)!;
+
+/* ------------------------------------------------------------------ */
 /* Element metadata: labels + text limits, one place.                  */
 /* ------------------------------------------------------------------ */
 
@@ -53,7 +116,7 @@ interface GraphicMeta {
   description: string;
 }
 
-const TEXTS: Record<AnyScene['id'], Record<string, TextMeta>> = {
+const TEXTS: Record<SceneType, Record<string, TextMeta>> = {
   impact: {
     kicker: { label: 'Kicker', maxLength: 32, multiline: false, choreo: 'kicker' },
     lineA: { label: 'Headline — linha 1', maxLength: 28, multiline: true, choreo: 'lineA' },
@@ -74,7 +137,7 @@ const TEXTS: Record<AnyScene['id'], Record<string, TextMeta>> = {
   },
 };
 
-const GRAPHICS: Record<AnyScene['id'], Record<string, GraphicMeta>> = {
+const GRAPHICS: Record<SceneType, Record<string, GraphicMeta>> = {
   impact: {
     lightLine: { label: 'Linha luminosa', choreo: 'lightLine', intensityLabel: 'Brilho', description: 'Varredura de luz que revela a cena.' },
     geometry: { label: 'Geometria em profundidade', choreo: 'geometry', intensityLabel: 'Densidade', description: 'Molduras em perspectiva reveladas pela linha.' },
@@ -151,21 +214,23 @@ const graphicSections = (base: FieldPath, meta: GraphicMeta): FieldSection[] => 
 const sceneSections = (project: SignatureProject, index: number): FieldSection[] => {
   const scene = project.scenes[index]!;
   const base: FieldPath = ['scenes', index];
-  const limits = SCENE_DURATION_LIMITS[scene.id];
+  const def = sceneTypeDef(scene.type);
   const fmt = project.format;
   const animation: FieldSection = {
     id: 'animation',
     label: 'Animação',
     fields: [
-      field.number([...base, 'duration'], 'Duração da cena', { min: limits.min, max: limits.max, step: 0.1, unit: 's' }),
+      ...(isDurationEditable(def)
+        ? [field.number([...base, 'duration'], 'Duração da cena', { min: def.duration.min, max: def.duration.max, step: 0.1, unit: 's', hint: def.duration.note })]
+        : []),
       field.number([...base, 'animation', 'intensity'], 'Intensidade / overshoot', { min: 0, max: 1.5, step: 0.01, unit: '×' }),
       field.number([...base, 'animation', 'pace'], 'Ritmo das entradas', { min: 0.75, max: 1.35, step: 0.01, unit: '×' }),
     ],
   };
-  if (scene.id === 'energy') {
+  if (scene.type === 'energy') {
     animation.fields.push(field.number([...base, 'props', 'pulseRate'], 'Pulsos por segundo', { min: 0.6, max: 3, step: 0.05, unit: 'Hz' }));
   }
-  if (scene.id === 'signature') {
+  if (scene.type === 'signature') {
     const words = scene.texts.headline.content.replace(/\n/g, ' ').split(/\s+/).filter(Boolean);
     animation.fields.push(
       field.select([...base, 'props', 'highlightWord'], 'Palavra em destaque', [
@@ -175,7 +240,11 @@ const sceneSections = (project: SignatureProject, index: number): FieldSection[]
     );
   }
   return [
-    { id: 'content', label: 'Cena', fields: [field.text([...base, 'name'], 'Nome', { maxLength: 40 })] },
+    {
+      id: 'content',
+      label: 'Cena',
+      fields: [field.text([...base, 'name'], 'Nome', { maxLength: 60, hint: `Instância de ${def.name}: editar esta cena não altera outras do mesmo tipo.` })],
+    },
     {
       id: 'background',
       label: 'Background',
@@ -284,8 +353,15 @@ export const getEditableTargets = (project: SignatureProject): EditableTarget[] 
   ];
 
   project.scenes.forEach((scene, index) => {
-    targets.push({ id: scene.id, label: scene.name, kind: 'scene', sceneId: scene.id, sections: sceneSections(project, index) });
-    for (const [key, meta] of Object.entries(TEXTS[scene.id])) {
+    targets.push({
+      id: scene.id,
+      label: scene.name,
+      kind: 'scene',
+      sceneId: scene.id,
+      description: SCENE_INFO[scene.type].description,
+      sections: sceneSections(project, index),
+    });
+    for (const [key, meta] of Object.entries(TEXTS[scene.type])) {
       targets.push({
         id: `${scene.id}.${key}`,
         label: meta.label,
@@ -295,7 +371,7 @@ export const getEditableTargets = (project: SignatureProject): EditableTarget[] 
         sections: textSections(['scenes', index, 'texts', key], meta),
       });
     }
-    for (const [key, meta] of Object.entries(GRAPHICS[scene.id])) {
+    for (const [key, meta] of Object.entries(GRAPHICS[scene.type])) {
       targets.push({
         id: `${scene.id}.${key}`,
         label: meta.label,
@@ -315,9 +391,9 @@ export const getEditableTargets = (project: SignatureProject): EditableTarget[] 
 /* ------------------------------------------------------------------ */
 
 const choreoFor = (scene: AnyScene, key: string): { in: number; dur: number } => {
-  const table = CHOREO[scene.id] as unknown as Record<string, { in: number; dur: number }>;
+  const table = CHOREO[scene.type] as unknown as Record<string, { in: number; dur: number }>;
   const entry = table[key] ?? { in: 0, dur: scene.duration };
-  if (scene.id === 'transformation') {
+  if (scene.type === 'transformation') {
     return { in: transformationToScene(entry.in, scene.duration), dur: transformationToScene(entry.dur, scene.duration) };
   }
   return entry;
@@ -328,11 +404,13 @@ export const getTimeline = (project: SignatureProject): TimelineModel => {
   const ranges = computeSceneRanges(project.scenes, fps);
   const layers: TimelineLayer[] = [];
 
-  project.scenes.forEach((scene, index) => {
-    const range = ranges[index]!;
+  // Only enabled scenes are on the timeline; field paths still use the project index.
+  for (const range of ranges) {
+    const index = range.index;
+    const scene = project.scenes[index]!;
     const toFrame = (s: number) => range.from + Math.round(s * fps);
     const sceneEnd = range.from + range.durationInFrames;
-    const exitLead = scene.id === 'signature' ? CHOREO.signature.outro : CHOREO[scene.id].exit;
+    const exitLead = scene.type === 'signature' ? CHOREO.signature.outro : CHOREO[scene.type].exit;
     const exitFrame = Math.max(range.from, sceneEnd - Math.round(exitLead * fps));
 
     layers.push({
@@ -367,15 +445,15 @@ export const getTimeline = (project: SignatureProject): TimelineModel => {
       });
     };
 
-    for (const [key, meta] of Object.entries(TEXTS[scene.id])) {
+    for (const [key, meta] of Object.entries(TEXTS[scene.type])) {
       const el = (scene.texts as Record<string, { visible: boolean; delay: number }>)[key]!;
       addLayer(key, meta.label, 'text', el.visible, el.delay, ['scenes', index, 'texts', key, 'delay']);
     }
-    for (const [key, meta] of Object.entries(GRAPHICS[scene.id])) {
+    for (const [key, meta] of Object.entries(GRAPHICS[scene.type])) {
       const el = (scene.elements as Record<string, { visible: boolean }>)[key]!;
       addLayer(key, meta.label, 'graphic', el.visible, 0);
     }
-  });
+  }
 
   const durationInFrames = ranges.reduce((a, r) => a + r.durationInFrames, 0);
   layers.push({
@@ -404,15 +482,21 @@ export const getTimeline = (project: SignatureProject): TimelineModel => {
   return {
     fps,
     durationInFrames,
-    scenes: project.scenes.map((scene, index) => ({
-      id: scene.id,
-      label: scene.name,
-      index,
-      from: ranges[index]!.from,
-      durationInFrames: ranges[index]!.durationInFrames,
-      targetId: scene.id,
-      duration: { path: ['scenes', index, 'duration'], ...SCENE_DURATION_LIMITS[scene.id] },
-    })),
+    scenes: ranges.map((range) => {
+      const scene = project.scenes[range.index]!;
+      const def = sceneTypeDef(scene.type);
+      return {
+        id: scene.id,
+        label: scene.name,
+        index: range.order,
+        typeId: scene.type,
+        typeLabel: def.name,
+        from: range.from,
+        durationInFrames: range.durationInFrames,
+        targetId: scene.id,
+        ...(isDurationEditable(def) ? { duration: { path: ['scenes', range.index, 'duration'], min: def.duration.min, max: def.duration.max } } : {}),
+      };
+    }),
     layers,
   };
 };
@@ -425,11 +509,17 @@ export const signatureDefinition = defineTemplate<SignatureProject>({
   id: TEMPLATE_ID,
   name: 'Signature / 001',
   version: TEMPLATE_VERSION,
-  description: 'THE FUTURE IS BUILT — filme promocional cinematográfico de 15s: tipografia cinética, geometria em profundidade e uma assinatura visual final.',
+  description:
+    'THE FUTURE IS BUILT — filme promocional cinematográfico: tipografia cinética, geometria em profundidade e uma assinatura visual final. Quatro cenas reutilizáveis, em qualquer ordem e quantidade.',
   tags: ['cinematic', 'kinetic type', 'tech', 'promo'],
   formats: FORMATS,
   schema: signatureProjectSchema,
+  sceneTypes: SIGNATURE_SCENE_TYPES,
   createDefaults: createSignatureDefaults,
+  createScene: createSignatureScene,
+  // 1.0.0 -> 1.1.0: the envelope migration (schema v2) already turned the fixed scenes
+  // into instances (type = old id, enabled = true); every field value is unchanged.
+  migrate: (raw) => ({ ...raw, templateVersion: TEMPLATE_VERSION }),
   getMetadata: (project) => sequentialMetadata(project),
   getEditableTargets,
   getTimeline,

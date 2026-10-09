@@ -10,8 +10,22 @@ import { CURRENT_SCHEMA_VERSION } from './schema/project';
 type Migration = (raw: Record<string, unknown>) => Record<string, unknown>;
 
 const migrations: Record<number, Migration> = {
-  // Example for the future:
-  // 1: (p) => ({ ...p, schemaVersion: 2, newField: defaultValue }),
+  /**
+   * v1 -> v2: fixed scene slots become scene instances. In v1 every template used the
+   * scene `id` as its slot/type identifier, so it becomes the `type`, and is also kept as
+   * the instance id: target ids (`impact.lineA`) and every field value survive unchanged.
+   */
+  1: (p) => ({
+    ...p,
+    schemaVersion: 2,
+    scenes: Array.isArray(p.scenes)
+      ? p.scenes.map((scene: unknown) => {
+          if (!scene || typeof scene !== 'object') return scene;
+          const s = scene as Record<string, unknown>;
+          return { ...s, type: typeof s.type === 'string' ? s.type : s.id, enabled: typeof s.enabled === 'boolean' ? s.enabled : true };
+        })
+      : p.scenes,
+  }),
 };
 
 export class MigrationError extends Error {}

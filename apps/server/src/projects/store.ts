@@ -88,8 +88,16 @@ export class ProjectStore {
   async get(id: string): Promise<MotionProject> {
     const file = path.join(this.dir(id), PROJECT_FILE);
     if (!(await exists(file))) throw new HttpError(404, `Project "${id}" not found`);
-    const { project, migrated } = this.validate(await readJson(file));
-    if (migrated) await writeJsonAtomic(file, project);
+    const raw = await readJson(file);
+    const { project, migrated } = this.validate(raw);
+    if (migrated) {
+      // Keep the pre-migration document next to the upgraded one: migrations must never
+      // be the reason a project is lost.
+      const from = (raw as { schemaVersion?: unknown; templateVersion?: unknown }) ?? {};
+      const backup = path.join(this.dir(id), `project.backup-v${String(from.schemaVersion ?? 0)}-${String(from.templateVersion ?? 'unknown').replace(/[^a-zA-Z0-9.-]/g, '_')}.json`);
+      if (!(await exists(backup))) await writeJsonAtomic(backup, raw);
+      await writeJsonAtomic(file, project);
+    }
     return project;
   }
 

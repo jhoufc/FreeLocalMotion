@@ -254,7 +254,10 @@ export const Timeline = ({ project, model }: { project: MotionProject; model: Pr
                   }}
                 >
                   <span className="idx">{String(s.index + 1).padStart(2, '0')}</span>
-                  <span>{s.label}</span>
+                  <span className="tl-scene-name" title={s.typeLabel && s.typeLabel !== s.label ? `${s.label} · ${s.typeLabel}` : s.label}>
+                    {s.label}
+                  </span>
+                  {s.typeLabel && !s.label.startsWith(s.typeLabel) && <span className="tl-scene-type">{s.typeLabel}</span>}
                   <span className="dur">{(s.durationInFrames / fps).toFixed(1)}s</span>
                   {s.duration && (
                     <div

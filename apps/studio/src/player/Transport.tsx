@@ -64,7 +64,7 @@ export const Transport = ({
       <div className="spacer" />
       {scene && (
         <span className="muted" style={{ fontSize: 11.5 }}>
-          Cena {scene.index + 1} · <b style={{ color: 'var(--text-0)', fontWeight: 600 }}>{sceneNames[scene.index]}</b>
+          Cena {scene.order + 1}/{ranges.length} · <b style={{ color: 'var(--text-0)', fontWeight: 600 }}>{sceneNames[scene.index]}</b>
         </span>
       )}
     </div>

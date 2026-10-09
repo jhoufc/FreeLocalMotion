@@ -7,6 +7,7 @@ import {
   motionProjectSchema,
   projectBaseShape,
   sceneBaseShape,
+  scenesArray,
   textElementSchema,
   type MotionProject,
 } from '@lms/shared';
@@ -17,9 +18,35 @@ import { computeSceneRanges, createTemplateRegistry, defineTemplate, field, pars
  * SDK. If this registers and works through the generic APIs, a new template can be
  * added without touching the editor (acceptance criterion 15).
  */
-const numbersScene = z.object({ ...sceneBaseShape, texts: z.object({ value: textElementSchema }) });
-const numbersSchema = z.object({ ...projectBaseShape, templateId: z.literal('kinetic-numbers'), scenes: z.tuple([numbersScene]), globals: z.object({}) });
+const numbersScene = z.object({ ...sceneBaseShape, type: z.literal('count'), texts: z.object({ value: textElementSchema }) });
+const numbersSchema = z.object({ ...projectBaseShape, templateId: z.literal('kinetic-numbers'), scenes: scenesArray(numbersScene), globals: z.object({}) });
 type NumbersProject = z.infer<typeof numbersSchema>;
+
+const countScene = (id: string, name: string): NumbersProject['scenes'][number] => ({
+  id,
+  type: 'count',
+  name,
+  enabled: true,
+  duration: 2,
+  background: createBackground({ variant: 'plain' }),
+  palette: emptyPaletteOverride(),
+  layout: { portrait: { align: 'center', scale: 1, offsetX: 0, offsetY: 0 }, landscape: { align: 'center', scale: 1, offsetX: 0, offsetY: 0 } },
+  texts: {
+    value: {
+      visible: true,
+      content: '1,000,000',
+      color: '$foreground',
+      weight: 800,
+      italic: false,
+      uppercase: false,
+      stretch: 'normal',
+      sizeScale: 1,
+      tracking: 0,
+      breaks: { portrait: 'single', landscape: 'single' },
+      delay: 0,
+    },
+  },
+});
 
 const numbersTemplate = defineTemplate<NumbersProject>({
   id: 'kinetic-numbers',
@@ -29,6 +56,8 @@ const numbersTemplate = defineTemplate<NumbersProject>({
   tags: ['test'],
   formats: ['portrait', 'landscape'],
   schema: numbersSchema,
+  sceneTypes: [{ id: 'count', name: 'Count', description: 'A number', heroTime: 1, duration: { default: 2, min: 1, max: 4, strategy: 'hold', note: '' } }],
+  createScene: (_type, init) => countScene(init.id, init.name),
   createDefaults: ({ id, name, format, now, fps }) => ({
     schemaVersion: CURRENT_SCHEMA_VERSION,
     id,
@@ -42,31 +71,7 @@ const numbersTemplate = defineTemplate<NumbersProject>({
     assets: [],
     createdAt: now,
     updatedAt: now,
-    scenes: [
-      {
-        id: 'count',
-        name: 'Count',
-        duration: 2,
-        background: createBackground({ variant: 'plain' }),
-        palette: emptyPaletteOverride(),
-        layout: { portrait: { align: 'center', scale: 1, offsetX: 0, offsetY: 0 }, landscape: { align: 'center', scale: 1, offsetX: 0, offsetY: 0 } },
-        texts: {
-          value: {
-            visible: true,
-            content: '1,000,000',
-            color: '$foreground',
-            weight: 800,
-            italic: false,
-            uppercase: false,
-            stretch: 'normal',
-            sizeScale: 1,
-            tracking: 0,
-            breaks: { portrait: 'single', landscape: 'single' },
-            delay: 0,
-          },
-        },
-      },
-    ],
+    scenes: [countScene('count', 'Count')],
     globals: {},
   }),
   getMetadata: (p) => sequentialMetadata(p),
@@ -96,6 +101,17 @@ describe('template registry', () => {
   it('rejects a template whose defaults violate its own schema', () => {
     const broken = { ...numbersTemplate, id: 'broken', createDefaults: (i: Parameters<typeof numbersTemplate.createDefaults>[0]) => ({ ...numbersTemplate.createDefaults(i), fps: 24 }) };
     expect(() => createTemplateRegistry([asAny(broken)])).toThrow(/defaults are invalid/);
+  });
+
+  it('rejects a scene type that creates invalid instances', () => {
+    const broken = { ...numbersTemplate, createScene: (t: string, i: { id: string; name: string }) => ({ ...countScene(i.id, i.name), duration: -1 }) };
+    expect(() => createTemplateRegistry([asAny(broken)])).toThrow(/creates an invalid instance/);
+  });
+
+  it('rejects duplicate scene ids and projects without an enabled scene', () => {
+    const p = numbersTemplate.createDefaults({ id: 'p-abcdef', name: 'x', format: 'landscape', now: 'now' });
+    expect(numbersSchema.safeParse({ ...p, scenes: [p.scenes[0], p.scenes[0]] }).success).toBe(false);
+    expect(numbersSchema.safeParse({ ...p, scenes: [{ ...p.scenes[0], enabled: false }] }).success).toBe(false);
   });
 
   it('every template project is a valid generic MotionProject envelope', () => {
@@ -135,8 +151,8 @@ describe('project parsing', () => {
       { id: 'b', duration: 1.5 },
     ];
     expect(computeSceneRanges(scenes, 30)).toEqual([
-      { id: 'a', index: 0, from: 0, durationInFrames: 90 },
-      { id: 'b', index: 1, from: 90, durationInFrames: 45 },
+      { id: 'a', index: 0, order: 0, from: 0, durationInFrames: 90 },
+      { id: 'b', index: 1, order: 1, from: 90, durationInFrames: 45 },
     ]);
     expect(computeSceneRanges(scenes, 60)[1]).toMatchObject({ from: 180, durationInFrames: 90 });
   });

@@ -46,17 +46,18 @@ Variáveis opcionais: `LMS_PORT`, `LMS_HOST`, `LMS_PROJECTS_DIR`, `LMS_EXPORTS_D
 |---|---|
 | Criar projeto | Aba **Templates** → *Novo projeto com este template*, ou menu **Projeto → Novo projeto…** |
 | Abrir / duplicar / excluir | Aba **Projetos** |
+| Compor cenas | Aba **Cenas**: menu ⋯ de cada cena (renomear, duplicar, mover, ocultar do vídeo, excluir), arraste pela alça ⋮⋮ para reordenar, **+ Adicionar cena** no fim ou no **+** entre cenas. Cada ocorrência é independente; a animação é a mesma do tipo |
 | Selecionar elemento | Clique direto no canvas, na lista *Elementos da cena* ou numa trilha da timeline |
 | Editar | Painel direito (inspector): texto, quebra de linha por formato, tipografia, cores (tokens do tema ou hex), background, elementos, layout por formato, animação |
 | Background | Procedural (4 variações), cor sólida, gradiente (2–5 cores, linear/radial, movimento) ou imagem local (escala, posição, push-in, desfoque, sobreposição) |
 | Trilha sonora | Selecione **Projeto e tema** → *Trilha sonora* (MP3/WAV/M4A/OGG) |
 | Formato | Botões **9:16 / 16:9** acima do preview |
-| Timing | Arraste a borda direita de uma cena na timeline (duração, limitada pelo template) ou arraste o clipe de um texto (atraso de entrada) |
+| Timing | Arraste a borda direita de uma cena na timeline ou use *Duração da cena* no inspector (limites e estratégia definidos pelo tipo de cena), ou arraste o clipe de um texto (atraso de entrada) |
 | Restaurar | Ícone ↺ no inspector restaura o item; **Projeto → Restaurar valores originais** restaura tudo (com desfazer) |
 | JSON | **Projeto → Exportar/Importar configuração JSON** |
 | Exportar MP4 | **Renderizar MP4** → escolha *Atual*, *9:16*, *16:9* ou *Ambos* → acompanhe etapa, frames e % reais; baixe, assista ou abra a pasta |
 
-Atalhos: `Espaço` play/pause · `←/→` frame · `Shift+←/→` 1 s · `Home/End` · `L` loop · `Ctrl+Z / Ctrl+Shift+Z` desfazer/refazer · `Ctrl+S` salvar (há também autosave).
+Atalhos: `Espaço` play/pause · `←/→` frame · `Shift+←/→` 1 s · `Home/End` · `L` loop · `Ctrl+Z / Ctrl+Shift+Z` desfazer/refazer · `Ctrl+D` duplicar cena · `Delete` excluir cena selecionada · `Ctrl+S` salvar (há também autosave).
 
 As edições são validadas contra o schema do template antes de serem aplicadas; valores fora dos limites nunca chegam ao preview, ao disco ou ao renderizador.
 
@@ -64,10 +65,12 @@ As edições são validadas contra o schema do template antes de serem aplicadas
 
 ```
 projects/<id>/project.json        documento do projeto (schemaVersion, validado)
+projects/<id>/project.backup-*.json  original guardado quando o projeto é migrado de versão
 projects/<id>/assets/<asset>.ext  uploads copiados com nome estável
 exports/*.mp4                     vídeos exportados pelo Studio
 exports/jobs.json                 histórico de renderizações
 exports/samples/                  amostras geradas por `pnpm render:samples`
+exports/composition/              projeto recomposto gerado por `pnpm render:composition` (+ snapshot .project.json)
 ```
 
 ## Testes e verificação
@@ -78,6 +81,7 @@ pnpm typecheck        # TypeScript estrito em todos os pacotes e scripts
 pnpm render:samples   # renderiza os MP4 de amostra (9:16 e 16:9) pelo pipeline de produção
 pnpm verify:videos    # ffprobe: codec, dimensões, fps, frames, duração + frames representativos + contact sheet
 pnpm render:stills    # PNGs de frames específicos (QA visual): pnpm render:stills 1.6 7.0 13.2
+pnpm render:composition  # MP4s de um projeto com cenas repetidas/movidas/desabilitadas; verifique com verify:videos
 ```
 
 ## Estrutura

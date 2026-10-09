@@ -88,6 +88,23 @@ describe('migrations', () => {
   it('passes current documents through', () => {
     expect(migrateEnvelope({ schemaVersion: CURRENT_SCHEMA_VERSION, a: 1 })).toEqual({ schemaVersion: CURRENT_SCHEMA_VERSION, a: 1 });
   });
+  it('v1 -> v2 turns fixed scenes into enabled instances without touching their data', () => {
+    const v1 = {
+      schemaVersion: 1,
+      name: 'Old',
+      scenes: [
+        { id: 'impact', name: 'Abertura', duration: 4.2, texts: { lineA: { content: 'O FUTURO' } } },
+        { id: 'energy', name: 'Energy', duration: 3 },
+      ],
+    };
+    const v2 = migrateEnvelope(structuredClone(v1));
+    expect(v2.schemaVersion).toBe(2);
+    expect(v2.scenes).toEqual([
+      { id: 'impact', type: 'impact', enabled: true, name: 'Abertura', duration: 4.2, texts: { lineA: { content: 'O FUTURO' } } },
+      { id: 'energy', type: 'energy', enabled: true, name: 'Energy', duration: 3 },
+    ]);
+    expect(v2.name).toBe('Old');
+  });
   it('rejects documents from the future and non-objects', () => {
     expect(() => migrateEnvelope({ schemaVersion: 999 })).toThrow(MigrationError);
     expect(() => migrateEnvelope([])).toThrow(MigrationError);

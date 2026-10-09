@@ -1,5 +1,7 @@
 import { useState } from 'react';
-import { ChevronDown, ChevronRight, Eye, EyeOff, RotateCcw } from 'lucide-react';
+import { ArrowDown, ArrowUp, ChevronDown, ChevronRight, Copy, Eye, EyeOff, RotateCcw, Trash2 } from 'lucide-react';
+import { sceneTypeOf } from '@lms/template-sdk';
+import { sceneCommands } from '../editor/sceneCommands';
 import { getAtPath, type MotionProject } from '@lms/shared';
 import { useEditor } from '../stores/editor';
 import type { ProjectModel } from '../editor/useProjectModel';
@@ -49,6 +51,30 @@ export const Inspector = ({ project, model }: { project: MotionProject; model: P
           )}
         </h2>
         {target.description && <p>{target.description}</p>}
+        {target.kind === 'scene' && scene && (
+          <div className="scene-actions">
+            <span className="type-badge" title="Tipo de cena (animação compartilhada)">
+              {sceneTypeOf(model.template, scene.type).name}
+            </span>
+            {!scene.enabled && <span className="off-badge">fora do vídeo</span>}
+            <div className="spacer" />
+            <button className="icon-btn sm" title="Mover para cima" disabled={project.scenes[0]?.id === scene.id} onClick={() => sceneCommands.moveBy(scene.id, -1)}>
+              <ArrowUp size={13} />
+            </button>
+            <button className="icon-btn sm" title="Mover para baixo" disabled={project.scenes.at(-1)?.id === scene.id} onClick={() => sceneCommands.moveBy(scene.id, 1)}>
+              <ArrowDown size={13} />
+            </button>
+            <button className="icon-btn sm" title={scene.enabled ? 'Ocultar do vídeo' : 'Incluir no vídeo'} onClick={() => sceneCommands.toggleEnabled(scene.id)}>
+              {scene.enabled ? <Eye size={13} /> : <EyeOff size={13} />}
+            </button>
+            <button className="icon-btn sm" title="Duplicar cena (Ctrl+D)" onClick={() => sceneCommands.duplicate(scene.id)}>
+              <Copy size={13} />
+            </button>
+            <button className="icon-btn sm" title="Excluir cena (Del)" disabled={project.scenes.length <= 1} onClick={() => sceneCommands.remove(scene.id)}>
+              <Trash2 size={13} />
+            </button>
+          </div>
+        )}
       </div>
       <div className="scroll">
         {target.sections.map((section) => {

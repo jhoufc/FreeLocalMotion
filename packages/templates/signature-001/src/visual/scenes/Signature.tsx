@@ -125,7 +125,7 @@ export const SignatureSceneView = ({ env }: { env: SceneEnv<SignatureScene> }) =
     <>
       <svg width={L.width} height={L.height} style={{ position: 'absolute', inset: 0, overflow: 'visible' }}>
         {E.markRing.visible ? (
-          <g data-lms-target="signature.markRing" opacity={E.markRing.opacity}>
+          <g data-lms-target={env.target('markRing')} opacity={E.markRing.opacity}>
             <circle
               cx={M.x}
               cy={M.y}
@@ -161,7 +161,7 @@ export const SignatureSceneView = ({ env }: { env: SceneEnv<SignatureScene> }) =
           </g>
         ) : null}
         {E.markDiamond.visible && dSize > 0 ? (
-          <g data-lms-target="signature.markDiamond" opacity={E.markDiamond.opacity} transform={`rotate(${round(dRot, 3)} ${M.x} ${M.y})`}>
+          <g data-lms-target={env.target('markDiamond')} opacity={E.markDiamond.opacity} transform={`rotate(${round(dRot, 3)} ${M.x} ${M.y})`}>
             <rect
               x={M.x - dSize / 2}
               y={M.y - dSize / 2}
@@ -180,7 +180,7 @@ export const SignatureSceneView = ({ env }: { env: SceneEnv<SignatureScene> }) =
         ) : null}
       </svg>
       {E.markCore.visible ? (
-        <div data-lms-target="signature.markCore" style={{ position: 'absolute', inset: 0, opacity: E.markCore.opacity }}>
+        <div data-lms-target={env.target('markCore')} style={{ position: 'absolute', inset: 0, opacity: E.markCore.opacity }}>
           {lineIn > 0 ? (
             <div
               style={{
@@ -240,7 +240,7 @@ export const SignatureSceneView = ({ env }: { env: SceneEnv<SignatureScene> }) =
   return (
     <div style={{ position: 'absolute', inset: 0 }}>
       <SceneBackground env={env} focus={{ x: M.x, y: M.y }} />
-      <div data-lms-target="signature.shards" style={{ position: 'absolute', inset: 0 }}>
+      <div data-lms-target={env.target('shards')} style={{ position: 'absolute', inset: 0 }}>
         {shards}
       </div>
       <div
@@ -267,7 +267,7 @@ export const SignatureSceneView = ({ env }: { env: SceneEnv<SignatureScene> }) =
         }}
       >
         <TextBlock
-          targetId="signature.headline"
+          targetId={env.target('headline')}
           text={head}
           color={headCol}
           align={align}
@@ -290,7 +290,7 @@ export const SignatureSceneView = ({ env }: { env: SceneEnv<SignatureScene> }) =
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'inherit', marginTop: (P ? 54 : 46) * u }}>
             <div style={{ width: 72 * u * rule, height: 3 * u, background: accent, marginBottom: 26 * u }} />
             <TextBlock
-              targetId="signature.subtitle"
+              targetId={env.target('subtitle')}
               text={sub}
               color={withAlpha(env.color(scene.texts.subtitle.color), 0.86)}
               align={align}

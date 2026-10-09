@@ -146,7 +146,7 @@ const CreateWord = ({ env, text, l }: { env: SceneEnv<TransformationScene>; text
     <div style={{ position: 'relative' }}>
       {slices}
       {guides.visible && box > 0 ? (
-        <div data-lms-target="transformation.guides" style={{ position: 'absolute', left: -pad, top: -pad, width: W + pad * 2, height: H + pad * 2, opacity: guides.opacity }}>
+        <div data-lms-target={env.target('guides')} style={{ position: 'absolute', left: -pad, top: -pad, width: W + pad * 2, height: H + pad * 2, opacity: guides.opacity }}>
           <div style={{ position: 'absolute', inset: 0, border: `${round(1.2 * L.u, 2)}px solid ${withAlpha(gc, 0.35 * box)}` }} />
           <div style={cornerStyle({ left: 0, top: 0, borderLeft: `${bw}px solid ${gc}`, borderTop: `${bw}px solid ${gc}` })} />
           <div style={cornerStyle({ right: 0, top: 0, borderRight: `${bw}px solid ${gc}`, borderTop: `${bw}px solid ${gc}` })} />
@@ -227,7 +227,7 @@ const AnimateWord = ({ env, text, l, tau }: { env: SceneEnv<TransformationScene>
         );
       })}
       {guides.visible ? (
-        <svg data-lms-target="transformation.guides" width={W} height={H} style={{ position: 'absolute', left: 0, top: 0, overflow: 'visible', opacity: guides.opacity }}>
+        <svg data-lms-target={env.target('guides')} width={W} height={H} style={{ position: 'absolute', left: 0, top: 0, overflow: 'visible', opacity: guides.opacity }}>
           <path d={d} fill="none" stroke={withAlpha(gc, 0.7)} strokeWidth={2.4 * L.u} strokeDasharray={`${round(10 * L.u)} ${round(9 * L.u)}`} opacity={draw} />
           {[0, 0.33, 0.66, 1].map((s, i) => {
             const x = bezier(P0[0]!, P1[0]!, P2[0]!, P3[0]!, s);
@@ -288,7 +288,7 @@ const InspireWord = ({ env, text, l }: { env: SceneEnv<TransformationScene>; tex
   const base = textStyle(text, color);
   return (
     <div style={{ position: 'relative' }}>
-      <svg data-lms-target="transformation.guides" width={W} height={H} style={{ position: 'absolute', left: 0, top: 0, overflow: 'visible' }}>
+      <svg data-lms-target={env.target('guides')} width={W} height={H} style={{ position: 'absolute', left: 0, top: 0, overflow: 'visible' }}>
         {rays}
       </svg>
       <div
@@ -435,7 +435,7 @@ export const TransformationSceneView = ({ env }: { env: SceneEnv<TransformationS
   const morph =
     mo.visible && mw > 1 ? (
       <div
-        data-lms-target="transformation.morph"
+        data-lms-target={env.target('morph')}
         style={{
           position: 'absolute',
           left: mix('x') * L.width - mw / 2 - cam.x * 0.4,
@@ -466,22 +466,22 @@ export const TransformationSceneView = ({ env }: { env: SceneEnv<TransformationS
   return (
     <div style={{ position: 'absolute', inset: 0, overflow: 'hidden' }}>
       <SceneBackground env={env} />
-      <div data-lms-target="transformation.frames" style={{ position: 'absolute', inset: 0 }}>
+      <div data-lms-target={env.target('frames')} style={{ position: 'absolute', inset: 0 }}>
         {frames}
       </div>
       {morph}
       {scene.texts.word1.visible ? (
-        <Plane cam={cam} L={L} x={p1.x} y={p1.y} z={1000} focusBlur={10} targetId="transformation.word1">
+        <Plane cam={cam} L={L} x={p1.x} y={p1.y} z={1000} focusBlur={10} targetId={env.target('word1')}>
           <CreateWord env={env} text={w1} l={l1} />
         </Plane>
       ) : null}
       {scene.texts.word2.visible && l2 > -0.4 ? (
-        <Plane cam={cam} L={L} x={p2.x} y={p2.y} z={2000} focusBlur={10} targetId="transformation.word2">
+        <Plane cam={cam} L={L} x={p2.x} y={p2.y} z={2000} focusBlur={10} targetId={env.target('word2')}>
           <AnimateWord env={env} text={w2} l={l2} tau={tau} />
         </Plane>
       ) : null}
       {scene.texts.word3.visible && l3 > -0.4 ? (
-        <Plane cam={cam} L={L} x={p3.x} y={p3.y} z={3000} focusBlur={8} targetId="transformation.word3" fadeNear={160}>
+        <Plane cam={cam} L={L} x={p3.x} y={p3.y} z={3000} focusBlur={8} targetId={env.target('word3')} fadeNear={160}>
           <InspireWord env={env} text={w3} l={l3} />
         </Plane>
       ) : null}

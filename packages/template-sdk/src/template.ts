@@ -2,7 +2,8 @@ import type { ComponentType } from 'react';
 import type { z } from 'zod';
 import { FORMAT_SPECS, type Format, type MotionProject, type SupportedFps } from '@lms/shared';
 import type { EditableTarget } from './fields';
-import { computeSceneRanges, totalFrames, type TimelineModel } from './timeline';
+import type { TimelineModel } from './timeline';
+import { projectDurationInFrames, type SceneDefinition } from './scenes';
 
 export interface CompositionMetadata {
   width: number;
@@ -41,7 +42,15 @@ export interface TemplateDefinition<P extends MotionProject = MotionProject> {
   /** Full schema for this template's projects (envelope + template specifics). */
   readonly schema: z.ZodType<P>;
 
+  /**
+   * The reusable animations this template offers. Projects hold an ordered list of
+   * instances (`scenes[i].type` -> a definition here); instances never share state.
+   */
+  readonly sceneTypes: readonly SceneDefinition[];
+
   createDefaults(init: ProjectInit): P;
+  /** A fresh instance of a scene type with its default values (not yet in the project). */
+  createScene(type: string, init: { id: string; name: string }): P['scenes'][number];
   /** Upgrade a raw project saved with an older template version. Optional. */
   migrate?(raw: Record<string, unknown>, fromVersion: string): Record<string, unknown>;
   getMetadata(project: P): CompositionMetadata;
@@ -61,6 +70,14 @@ export type AnyTemplateModule = TemplateModule<MotionProject>;
 export const defineTemplate = <P extends MotionProject>(definition: TemplateDefinition<P>): TemplateDefinition<P> => {
   if (!/^[a-z0-9-]+$/.test(definition.id)) throw new Error(`Invalid template id "${definition.id}"`);
   if (definition.formats.length === 0) throw new Error(`Template "${definition.id}" must support at least one format`);
+  const typeIds = new Set<string>();
+  for (const t of definition.sceneTypes) {
+    if (typeIds.has(t.id)) throw new Error(`Template "${definition.id}" declares scene type "${t.id}" twice`);
+    typeIds.add(t.id);
+    const d = t.duration;
+    if (!(d.min <= d.default && d.default <= d.max)) throw new Error(`Scene type "${t.id}": default duration outside its limits`);
+    if (d.strategy === 'fixed' && d.min !== d.max) throw new Error(`Scene type "${t.id}": fixed duration needs min === max`);
+  }
   return definition;
 };
 
@@ -78,13 +95,20 @@ export const defineTemplateModule = <P extends MotionProject>(
     Component: Component as unknown as ComponentType<TemplateComponentProps<MotionProject>>,
   }) as unknown as AnyTemplateModule;
 
-/** Default metadata: format dimensions + sum of sequential scene durations. */
+/** Scene definition for an instance, or throws (instances are validated against the template's types). */
+export const sceneTypeOf = (template: Pick<AnyTemplateDefinition, 'sceneTypes' | 'id'>, type: string): SceneDefinition => {
+  const def = template.sceneTypes.find((t) => t.id === type);
+  if (!def) throw new Error(`Template "${template.id}" has no scene type "${type}"`);
+  return def;
+};
+
+/** Default metadata: format dimensions + sum of the enabled scenes' durations. */
 export const sequentialMetadata = (project: MotionProject, format: Format = project.format): CompositionMetadata => {
   const spec = FORMAT_SPECS[format];
   return {
     width: spec.width,
     height: spec.height,
     fps: project.fps,
-    durationInFrames: Math.max(1, totalFrames(computeSceneRanges(project.scenes, project.fps))),
+    durationInFrames: projectDurationInFrames(project.scenes, project.fps),
   };
 };

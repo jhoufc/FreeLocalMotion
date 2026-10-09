@@ -1,6 +1,6 @@
 import { Grain, progress, round, type FrameLayout } from '@lms/motion-core';
 import { mergePalette, resolveColor, withAlpha } from '@lms/shared';
-import type { SceneRange } from '@lms/template-sdk';
+import { sceneAtFrame, type SceneRange } from '@lms/template-sdk';
 import type { SignatureProject } from '../schema';
 import { MONO } from './fonts';
 
@@ -35,8 +35,9 @@ export const Hud = ({
   const t = frame / fps;
   const end = durationInFrames / fps;
   const on = progress(t, 0.25, 0.6) * (1 - progress(t, end - 0.5, 0.45));
-  const idx = Math.max(0, ranges.findIndex((r) => frame >= r.from && frame < r.from + r.durationInFrames));
-  const scene = project.scenes[idx] ?? project.scenes[0];
+  const range = sceneAtFrame(ranges, frame);
+  const idx = range?.order ?? 0;
+  const scene = project.scenes[range?.index ?? 0] ?? project.scenes[0]!;
   const palette = mergePalette(project.theme, scene.palette);
   const color = resolveColor(hud.color, palette);
   const accent = palette.accent;
@@ -59,7 +60,15 @@ export const Hud = ({
   const bracket = (pos: Record<string, number>, sides: [string, string]) => (
     <div style={{ position: 'absolute', width: arm, height: arm, ...pos, [`border${sides[0]}`]: `${bw}px solid ${color}`, [`border${sides[1]}`]: `${bw}px solid ${color}` }} />
   );
-  const sceneLabel = `${pad2(idx + 1)} / ${pad2(project.scenes.length)}  ${scene.name}`;
+  // Scene names are user-defined (up to 60 chars): fit the bottom-left label to the room
+  // left by the bottom-right label. Mono font → each glyph advances 0.6em + 0.24em tracking.
+  const charW = fs * 0.84;
+  const labelX = arm + 18 * u;
+  const rightChars = hud.timecode ? hud.labelRight.length + 3 : 0;
+  // 6 = "●  " prefix + a 3-glyph gap before the right label.
+  const maxChars = Math.max(8, Math.floor((L.width - inset.left - inset.right - labelX * 2) / charW) - rightChars - 6);
+  const fullLabel = `${pad2(idx + 1)} / ${pad2(ranges.length)}  ${scene.name}`;
+  const sceneLabel = fullLabel.length > maxChars ? `${fullLabel.slice(0, maxChars - 1).trimEnd()}…` : fullLabel;
   const prog = frame / Math.max(1, durationInFrames - 1);
   const barW = L.width - inset.left - inset.right - arm * 2 - 40 * u;
 

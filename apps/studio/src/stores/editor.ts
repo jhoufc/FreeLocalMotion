@@ -1,6 +1,19 @@
 import { create } from 'zustand';
 import { getAtPath, pathKey, setAtPath, type FieldPath, type Format, type MotionProject, type ProjectSummary, type TemplateSummary } from '@lms/shared';
 import { templateModules } from '@lms/catalog';
+import {
+  SceneOperationError,
+  createSceneId,
+  duplicateScene as duplicateSceneOp,
+  findSceneIndex,
+  insertScene,
+  moveScene as moveSceneOp,
+  nextSceneName,
+  removeScene as removeSceneOp,
+  renameScene as renameSceneOp,
+  sceneTypeOf,
+  setSceneEnabled as setSceneEnabledOp,
+} from '@lms/template-sdk';
 import { api, ApiError } from '../api/client';
 
 export interface Toast {
@@ -38,6 +51,13 @@ interface EditorState {
   /** Discards local edits and reloads the version on disk (after a conflict). */
   reloadFromDisk(): Promise<void>;
   select(targetId: string): void;
+  /* Scene composition. Each returns the affected scene id, or null if refused. */
+  addScene(type: string, atIndex?: number): string | null;
+  duplicateScene(sceneId: string): string | null;
+  removeScene(sceneId: string): string | null;
+  moveScene(sceneId: string, toIndex: number): string | null;
+  renameScene(sceneId: string, name: string): string | null;
+  setSceneEnabled(sceneId: string, enabled: boolean): string | null;
   resetTarget(targetId: string): void;
   resetProject(): void;
   duplicateProject(): Promise<void>;
@@ -82,10 +102,52 @@ export const validateProject = (project: MotionProject) => {
   return { ok: false as const, message: issue ? `${issue.path.join('.')}: ${issue.message}` : 'Valor inválido' };
 };
 
+/** Target ids of a project: scene instance ids and `<sceneId>.<element>` ids. */
+const selectionExists = (project: MotionProject, targetId: string): boolean => {
+  if (targetId === 'project' || targetId.startsWith('global.')) return true;
+  const sceneId = targetId.split('.')[0]!;
+  return project.scenes.some((s) => s.id === sceneId);
+};
+
 export const useEditor = create<EditorState>((set, get) => {
   const scheduleAutosave = () => {
     if (autosaveTimer) clearTimeout(autosaveTimer);
     autosaveTimer = setTimeout(() => void get().save(), AUTOSAVE_MS);
+  };
+
+  /** After undo/redo/removal the selected scene may be gone: fall back to a neighbour. */
+  const keepSelectionValid = (fallbackIndex = 0) => {
+    const { project, selectedTargetId } = get();
+    if (!project || selectionExists(project, selectedTargetId)) return;
+    const scene = project.scenes[Math.min(fallbackIndex, project.scenes.length - 1)] ?? project.scenes[0];
+    set({ selectedTargetId: scene?.id ?? 'project' });
+  };
+
+  /**
+   * Applies a structural edit: validates the whole document with the template schema,
+   * records one undo step and optionally selects a target. Refusals surface as toasts.
+   * Returns the affected scene id, or null when the edit was refused.
+   */
+  const structural = (op: (project: MotionProject) => { next: MotionProject; affected: string; select?: string }): string | null => {
+    const { project } = get();
+    if (!project) return null;
+    let result: ReturnType<typeof op>;
+    try {
+      result = op(project);
+    } catch (err) {
+      get().toast('error', err instanceof SceneOperationError ? err.message : errMessage(err));
+      return null;
+    }
+    if (result.next !== project) {
+      const valid = validateProject(result.next);
+      if (!valid.ok) {
+        get().toast('error', valid.message);
+        return null;
+      }
+      get().replaceProject(valid.project);
+    }
+    if (result.select) set({ selectedTargetId: result.select });
+    return result.affected;
   };
 
   const load = (project: MotionProject) => {
@@ -213,6 +275,7 @@ export const useEditor = create<EditorState>((set, get) => {
       const prev = past[past.length - 1];
       if (!prev || !project) return;
       set({ project: prev, past: past.slice(0, -1), future: [project, ...future], saveState: 'dirty', lastCoalesce: null });
+      keepSelectionValid();
       scheduleAutosave();
     },
 
@@ -221,6 +284,7 @@ export const useEditor = create<EditorState>((set, get) => {
       const next = future[0];
       if (!next || !project) return;
       set({ project: next, past: [...past, project], future: future.slice(1), saveState: 'dirty', lastCoalesce: null });
+      keepSelectionValid();
       scheduleAutosave();
     },
 
@@ -273,17 +337,72 @@ export const useEditor = create<EditorState>((set, get) => {
       set({ selectedTargetId: targetId });
     },
 
+    addScene(type, atIndex) {
+      return structural((project) => {
+        const template = templateModules.get(project.templateId);
+        const def = sceneTypeOf(template, type);
+        const scene = template.createScene(type, { id: createSceneId(project, type), name: nextSceneName(project, def.name) });
+        return { next: insertScene(project, scene, atIndex), affected: scene.id, select: scene.id };
+      });
+    },
+
+    duplicateScene(sceneId) {
+      return structural((project) => {
+        const { project: next, scene } = duplicateSceneOp(project, sceneId);
+        return { next, affected: scene.id, select: scene.id };
+      });
+    },
+
+    removeScene(sceneId) {
+      const index = get().project ? findSceneIndex(get().project!.scenes, sceneId) : -1;
+      const result = structural((project) => ({ next: removeSceneOp(project, sceneId), affected: sceneId }));
+      if (result) keepSelectionValid(Math.max(0, index));
+      return result;
+    },
+
+    moveScene(sceneId, toIndex) {
+      // Moving keeps the current selection when it belongs to the moved scene.
+      const selected = get().selectedTargetId;
+      return structural((project) => ({
+        next: moveSceneOp(project, sceneId, toIndex),
+        affected: sceneId,
+        select: selected.split('.')[0] === sceneId ? selected : sceneId,
+      }));
+    },
+
+    renameScene(sceneId, name) {
+      return structural((project) => {
+        const current = project.scenes.find((s) => s.id === sceneId);
+        const unchanged = current?.name === name.replace(/\s+/g, ' ').trim();
+        return { next: unchanged ? project : renameSceneOp(project, sceneId, name), affected: sceneId };
+      });
+    },
+
+    setSceneEnabled(sceneId, enabled) {
+      return structural((project) => ({ next: setSceneEnabledOp(project, sceneId, enabled), affected: sceneId }));
+    },
+
     resetTarget(targetId) {
       const { project } = get();
       if (!project) return;
       const template = templateModules.get(project.templateId);
-      const defaults = template.createDefaults({ id: project.id, name: project.name, format: project.format, fps: project.fps, now: project.createdAt });
       const target = template.getEditableTargets(project).find((t) => t.id === targetId);
       if (!target) return;
+      // Defaults come from the instance's *type*, placed at the instance's own index, so
+      // resetting "Impact #3" restores Impact defaults without touching other scenes.
+      let defaults: MotionProject = template.createDefaults({ id: project.id, name: project.name, format: project.format, fps: project.fps, now: project.createdAt });
+      const sceneIndex = target.sceneId ? findSceneIndex(project.scenes, target.sceneId) : -1;
+      if (sceneIndex >= 0) {
+        const scene = project.scenes[sceneIndex]!;
+        const fresh = template.createScene(scene.type, { id: scene.id, name: scene.name });
+        const scenes = [...project.scenes];
+        scenes[sceneIndex] = fresh;
+        defaults = { ...defaults, scenes };
+      }
       let next = project;
       for (const section of target.sections) {
         for (const field of section.fields) {
-          if (field.path[0] === 'name' || field.path[0] === 'fps') continue;
+          if (field.path[0] === 'name' || field.path[0] === 'fps' || field.path.at(-1) === 'name') continue;
           next = setAtPath(next, field.path, structuredClone(getAtPath(defaults, field.path)));
         }
       }

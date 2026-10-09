@@ -1,8 +1,12 @@
 import { z } from 'zod';
-import { graphicElementSchema, projectBaseShape, sceneBaseShape, textElementSchema } from '@lms/shared';
+import { graphicElementSchema, projectBaseShape, sceneBaseShape, scenesArray, textElementSchema } from '@lms/shared';
 
 export const TEMPLATE_ID = 'signature-001';
-export const TEMPLATE_VERSION = '1.0.0';
+/**
+ * 1.0.0: fixed sequence of four scenes.
+ * 1.1.0: scenes are instances of four scene types (any order, repeatable).
+ */
+export const TEMPLATE_VERSION = '1.1.0';
 
 export const animationSchema = z.object({
   /** Overshoot / amplitude of the choreography. 0 = restrained, 1 = designed, 1.5 = punchy. */
@@ -12,7 +16,7 @@ export const animationSchema = z.object({
 });
 export type SceneAnimation = z.infer<typeof animationSchema>;
 
-/** Duration bounds per scene (seconds). Also used by the timeline drag handles. */
+/** Duration bounds per scene type (seconds). Also used by the timeline drag handles. */
 export const SCENE_DURATION_LIMITS = {
   impact: { min: 2.4, max: 5 },
   energy: { min: 2.4, max: 5 },
@@ -25,7 +29,7 @@ const durationFor = (id: keyof typeof SCENE_DURATION_LIMITS) =>
 
 export const impactSceneSchema = z.object({
   ...sceneBaseShape,
-  id: z.literal('impact'),
+  type: z.literal('impact'),
   duration: durationFor('impact'),
   texts: z.object({ kicker: textElementSchema, lineA: textElementSchema, lineB: textElementSchema }),
   elements: z.object({ lightLine: graphicElementSchema, geometry: graphicElementSchema, particles: graphicElementSchema }),
@@ -34,7 +38,7 @@ export const impactSceneSchema = z.object({
 
 export const energySceneSchema = z.object({
   ...sceneBaseShape,
-  id: z.literal('energy'),
+  type: z.literal('energy'),
   duration: durationFor('energy'),
   texts: z.object({ lead: textElementSchema, headline: textElementSchema }),
   elements: z.object({
@@ -52,7 +56,7 @@ export const energySceneSchema = z.object({
 
 export const transformationSceneSchema = z.object({
   ...sceneBaseShape,
-  id: z.literal('transformation'),
+  type: z.literal('transformation'),
   duration: durationFor('transformation'),
   texts: z.object({ word1: textElementSchema, word2: textElementSchema, word3: textElementSchema }),
   elements: z.object({
@@ -65,7 +69,7 @@ export const transformationSceneSchema = z.object({
 
 export const signatureSceneSchema = z.object({
   ...sceneBaseShape,
-  id: z.literal('signature'),
+  type: z.literal('signature'),
   duration: durationFor('signature'),
   texts: z.object({ headline: textElementSchema, subtitle: textElementSchema }),
   elements: z.object({
@@ -95,7 +99,8 @@ export const globalsSchema = z.object({
 export const signatureProjectSchema = z.object({
   ...projectBaseShape,
   templateId: z.literal(TEMPLATE_ID),
-  scenes: z.tuple([impactSceneSchema, energySceneSchema, transformationSceneSchema, signatureSceneSchema]),
+  /** Ordered scene instances. Any type, any order, any number of repetitions. */
+  scenes: scenesArray(z.discriminatedUnion('type', [impactSceneSchema, energySceneSchema, transformationSceneSchema, signatureSceneSchema])),
   globals: globalsSchema,
 });
 
@@ -106,4 +111,5 @@ export type TransformationScene = z.infer<typeof transformationSceneSchema>;
 export type SignatureScene = z.infer<typeof signatureSceneSchema>;
 export type SignatureGlobals = z.infer<typeof globalsSchema>;
 export type AnyScene = SignatureProject['scenes'][number];
-export type SceneId = AnyScene['id'];
+export type SceneType = AnyScene['type'];
+export const SCENE_TYPES = ['impact', 'energy', 'transformation', 'signature'] as const satisfies readonly SceneType[];
