@@ -1,5 +1,18 @@
 import { create } from 'zustand';
-import { getAtPath, pathKey, setAtPath, type FieldPath, type Format, type MotionProject, type ProjectSummary, type TemplateSummary } from '@lms/shared';
+import {
+  getAtPath,
+  pathKey,
+  setAtPath,
+  type FieldPath,
+  type Format,
+  type MotionProject,
+  type ProjectSummary,
+  type SaveTemplateRequest,
+  type StarterSummary,
+  type TemplateSummary,
+  type UpdateTemplateRequest,
+  type UserTemplateSummary,
+} from '@lms/shared';
 import { templateModules } from '@lms/catalog';
 import {
   SceneOperationError,
@@ -27,6 +40,8 @@ export type SaveState = 'idle' | 'dirty' | 'saving' | 'saved' | 'error' | 'confl
 interface EditorState {
   ready: boolean;
   templates: TemplateSummary[];
+  userTemplates: UserTemplateSummary[];
+  starters: StarterSummary[];
   projects: ProjectSummary[];
   project: MotionProject | null;
   /** JSON of the last persisted version, for dirty detection. */
@@ -43,6 +58,17 @@ interface EditorState {
   refreshProjects(): Promise<void>;
   openProject(id: string): Promise<void>;
   createProject(templateId: string, name?: string, format?: Format): Promise<void>;
+  /** New free composition prefilled with a ready-made composition. */
+  createFromStarter(starterId: string, name?: string, format?: Format): Promise<void>;
+  /* User templates */
+  refreshUserTemplates(): Promise<void>;
+  createFromUserTemplate(templateId: string, name?: string, format?: Format): Promise<void>;
+  saveAsTemplate(req: Omit<SaveTemplateRequest, 'projectId'>): Promise<UserTemplateSummary | null>;
+  editUserTemplate(templateId: string): Promise<void>;
+  publishDraft(): Promise<void>;
+  updateUserTemplate(templateId: string, patch: UpdateTemplateRequest): Promise<void>;
+  duplicateUserTemplate(templateId: string): Promise<void>;
+  deleteUserTemplate(templateId: string): Promise<void>;
   update(path: FieldPath, value: unknown, opts?: { coalesce?: boolean }): boolean;
   replaceProject(next: MotionProject, opts?: { history?: boolean }): void;
   undo(): void;
@@ -52,7 +78,8 @@ interface EditorState {
   reloadFromDisk(): Promise<void>;
   select(targetId: string): void;
   /* Scene composition. Each returns the affected scene id, or null if refused. */
-  addScene(type: string, atIndex?: number): string | null;
+  /** `keepPalette`: apply the scene type's original palette as a per-scene override. */
+  addScene(type: string, atIndex?: number, opts?: { keepPalette?: boolean }): string | null;
   duplicateScene(sceneId: string): string | null;
   removeScene(sceneId: string): string | null;
   moveScene(sceneId: string, toIndex: number): string | null;
@@ -101,6 +128,9 @@ export const validateProject = (project: MotionProject) => {
   const issue = parsed.error.issues[0];
   return { ok: false as const, message: issue ? `${issue.path.join('.')}: ${issue.message}` : 'Valor inválido' };
 };
+
+/** Free compositions may become empty; template projects keep at least one active scene. */
+const listPolicy = (project: MotionProject) => ({ allowEmpty: Boolean(templateModules.get(project.templateId).allowEmpty) });
 
 /** Target ids of a project: scene instance ids and `<sceneId>.<element>` ids. */
 const selectionExists = (project: MotionProject, targetId: string): boolean => {
@@ -167,6 +197,8 @@ export const useEditor = create<EditorState>((set, get) => {
   return {
     ready: false,
     templates: [],
+    userTemplates: [],
+    starters: [],
     projects: [],
     project: null,
     savedJson: '',
@@ -183,8 +215,8 @@ export const useEditor = create<EditorState>((set, get) => {
       if (initPromise) return initPromise;
       initPromise = (async () => {
         try {
-        const [templates, projects] = await Promise.all([api.templates(), api.projects()]);
-        set({ templates, projects });
+        const [templates, projects, userTemplates, starters] = await Promise.all([api.templates(), api.projects(), api.userTemplates().catch(() => []), api.starters().catch(() => [])]);
+        set({ templates, projects, userTemplates, starters });
         const last = recall();
         const target = projects.find((p) => p.id === last) ?? projects[0];
         if (target) await get().openProject(target.id);
@@ -219,6 +251,106 @@ export const useEditor = create<EditorState>((set, get) => {
         load(project);
         await get().refreshProjects();
         get().toast('success', `Projeto “${project.name}” criado`);
+      } catch (err) {
+        get().toast('error', errMessage(err));
+      }
+    },
+
+    async createFromStarter(starterId, name, format) {
+      if (get().saveState === 'dirty') await get().save();
+      const free = get().templates.find((t) => t.mode === 'free');
+      if (!free) return;
+      try {
+        const project = await api.createProject(free.id, name, format, starterId);
+        load(project);
+        await get().refreshProjects();
+        get().toast('success', `“${project.name}” criado — todas as cenas são editáveis`);
+      } catch (err) {
+        get().toast('error', errMessage(err));
+      }
+    },
+
+    async refreshUserTemplates() {
+      set({ userTemplates: await api.userTemplates() });
+    },
+
+    async createFromUserTemplate(templateId, name, format) {
+      if (get().saveState === 'dirty') await get().save();
+      try {
+        const project = await api.projectFromTemplate(templateId, { ...(name ? { name } : {}), ...(format ? { format } : {}) });
+        load(project);
+        await get().refreshProjects();
+        get().toast('success', `Projeto “${project.name}” criado a partir do template`);
+      } catch (err) {
+        get().toast('error', errMessage(err));
+      }
+    },
+
+    async saveAsTemplate(req) {
+      const { project } = get();
+      if (!project) return null;
+      await get().save();
+      try {
+        const saved = await api.saveAsTemplate({ ...req, projectId: project.id });
+        await get().refreshUserTemplates();
+        get().toast('success', `Template “${saved.name}” salvo na biblioteca`);
+        return saved;
+      } catch (err) {
+        get().toast('error', `Não foi possível salvar o template: ${errMessage(err)}`);
+        return null;
+      }
+    },
+
+    async editUserTemplate(templateId) {
+      if (get().saveState === 'dirty') await get().save();
+      try {
+        const draft = await api.templateDraft(templateId);
+        load(draft);
+        await get().refreshProjects();
+        get().toast('info', 'Editando uma cópia de trabalho. Publique para criar a nova versão do template.');
+      } catch (err) {
+        get().toast('error', errMessage(err));
+      }
+    },
+
+    async publishDraft() {
+      const { project } = get();
+      if (!project || project.origin.kind !== 'template-draft') return;
+      await get().save();
+      try {
+        const t = await api.publishRevision(project.origin.templateId, project.id);
+        load(await api.project(project.id));
+        await Promise.all([get().refreshUserTemplates(), get().refreshProjects()]);
+        get().toast('success', `“${t.name}” publicado como revisão ${t.revision}`);
+      } catch (err) {
+        get().toast('error', `Falha ao publicar: ${errMessage(err)}`);
+      }
+    },
+
+    async updateUserTemplate(templateId, patch) {
+      try {
+        await api.updateTemplate(templateId, patch);
+        await get().refreshUserTemplates();
+      } catch (err) {
+        get().toast('error', errMessage(err));
+      }
+    },
+
+    async duplicateUserTemplate(templateId) {
+      try {
+        const copy = await api.duplicateTemplate(templateId);
+        await get().refreshUserTemplates();
+        get().toast('success', `Duplicado como “${copy.name}”`);
+      } catch (err) {
+        get().toast('error', errMessage(err));
+      }
+    },
+
+    async deleteUserTemplate(templateId) {
+      try {
+        await api.deleteTemplate(templateId);
+        await get().refreshUserTemplates();
+        get().toast('info', 'Template excluído. Projetos criados a partir dele não foram alterados.');
       } catch (err) {
         get().toast('error', errMessage(err));
       }
@@ -293,10 +425,16 @@ export const useEditor = create<EditorState>((set, get) => {
         clearTimeout(autosaveTimer);
         autosaveTimer = null;
       }
-      const { project, savedJson, saveState } = get();
-      if (!project) return;
+      const { project: current, savedJson, saveState } = get();
+      if (!current) return;
       // After a conflict only an explicit choice (overwrite / reload) may write.
       if (saveState === 'conflict' && !opts.force) return;
+      // `updatedAt` is the server's version token. Undo/redo snapshots and edits made while
+      // a save was in flight still carry an older one: always base the write on the version
+      // of the last successful save (savedJson), not on the stamp inside the snapshot.
+      const version = savedJson ? (JSON.parse(savedJson) as MotionProject).updatedAt : current.updatedAt;
+      const project = current.updatedAt === version ? current : { ...current, updatedAt: version };
+      if (project !== current) set({ project });
       const json = JSON.stringify(project);
       if (json === savedJson && !opts.force) {
         set({ saveState: 'saved' });
@@ -337,11 +475,13 @@ export const useEditor = create<EditorState>((set, get) => {
       set({ selectedTargetId: targetId });
     },
 
-    addScene(type, atIndex) {
+    addScene(type, atIndex, opts = {}) {
       return structural((project) => {
         const template = templateModules.get(project.templateId);
         const def = sceneTypeOf(template, type);
-        const scene = template.createScene(type, { id: createSceneId(project, type), name: nextSceneName(project, def.name) });
+        let scene = template.createScene(type, { id: createSceneId(project, type), name: nextSceneName(project, def.name) });
+        const original = (def as { palette?: Partial<MotionProject['theme']> }).palette;
+        if (opts.keepPalette && original) scene = { ...scene, palette: { ...scene.palette, ...original } };
         return { next: insertScene(project, scene, atIndex), affected: scene.id, select: scene.id };
       });
     },
@@ -355,7 +495,7 @@ export const useEditor = create<EditorState>((set, get) => {
 
     removeScene(sceneId) {
       const index = get().project ? findSceneIndex(get().project!.scenes, sceneId) : -1;
-      const result = structural((project) => ({ next: removeSceneOp(project, sceneId), affected: sceneId }));
+      const result = structural((project) => ({ next: removeSceneOp(project, sceneId, listPolicy(project)), affected: sceneId }));
       if (result) keepSelectionValid(Math.max(0, index));
       return result;
     },
@@ -379,7 +519,7 @@ export const useEditor = create<EditorState>((set, get) => {
     },
 
     setSceneEnabled(sceneId, enabled) {
-      return structural((project) => ({ next: setSceneEnabledOp(project, sceneId, enabled), affected: sceneId }));
+      return structural((project) => ({ next: setSceneEnabledOp(project, sceneId, enabled, listPolicy(project)), affected: sceneId }));
     },
 
     resetTarget(targetId) {

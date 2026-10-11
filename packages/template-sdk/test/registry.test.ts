@@ -56,7 +56,7 @@ const numbersTemplate = defineTemplate<NumbersProject>({
   tags: ['test'],
   formats: ['portrait', 'landscape'],
   schema: numbersSchema,
-  sceneTypes: [{ id: 'count', name: 'Count', description: 'A number', heroTime: 1, duration: { default: 2, min: 1, max: 4, strategy: 'hold', note: '' } }],
+  sceneTypes: [{ id: 'count', name: 'Count', description: 'A number', category: 'data', family: { id: 'test', name: 'Test' }, version: '1.0.0', heroTime: 1, duration: { default: 2, min: 1, max: 4, strategy: 'hold', note: '' } }],
   createScene: (_type, init) => countScene(init.id, init.name),
   createDefaults: ({ id, name, format, now, fps }) => ({
     schemaVersion: CURRENT_SCHEMA_VERSION,
@@ -69,6 +69,7 @@ const numbersTemplate = defineTemplate<NumbersProject>({
     theme: { background: '#000000', foreground: '#FFFFFF', accent: '#FF0000', secondary: '#00FF00', surface: '#111111' },
     audio: { assetId: null, volume: 1, fadeIn: 0, fadeOut: 0 },
     assets: [],
+    origin: { kind: 'blank' },
     createdAt: now,
     updatedAt: now,
     scenes: [countScene('count', 'Count')],

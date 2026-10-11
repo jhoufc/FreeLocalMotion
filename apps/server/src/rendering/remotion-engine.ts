@@ -2,7 +2,8 @@ import fs from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { bundle } from '@remotion/bundler';
-import { ensureBrowser, makeCancelSignal, renderMedia, selectComposition } from '@remotion/renderer';
+import { ensureBrowser, makeCancelSignal, renderMedia, renderStill, selectComposition } from '@remotion/renderer';
+import type { MotionProject } from '@lms/shared';
 import type { AnyTemplateDefinition, TemplateRegistry } from '@lms/template-sdk';
 import { RenderCancelledError, type RenderEngine, type RenderRequest, type RenderResult } from './engine';
 
@@ -133,5 +134,26 @@ export class RemotionEngine implements RenderEngine {
       throw err;
     }
     return { width: composition.width, height: composition.height, fps: composition.fps, durationInFrames: total };
+  }
+
+  /** One frame as JPEG (template thumbnails), through the same bundle and composition. */
+  async renderStill(req: { project: MotionProject; frame: number; outputPath: string; assetBaseUrl: string; scale?: number }): Promise<void> {
+    const template = this.opts.templates.get(req.project.templateId);
+    await ensureBrowser();
+    const serveUrl = await this.getBundle(() => undefined);
+    const inputProps = { project: req.project, assetBaseUrl: req.assetBaseUrl };
+    const composition = await selectComposition({ serveUrl, id: template.id, inputProps });
+    await fs.mkdir(path.dirname(req.outputPath), { recursive: true });
+    await renderStill({
+      serveUrl,
+      composition,
+      inputProps,
+      frame: Math.min(composition.durationInFrames - 1, Math.max(0, req.frame)),
+      output: req.outputPath,
+      imageFormat: 'jpeg',
+      jpegQuality: 88,
+      scale: req.scale ?? 0.4,
+      overwrite: true,
+    });
   }
 }

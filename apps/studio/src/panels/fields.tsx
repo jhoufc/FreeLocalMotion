@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
-import { AlertTriangle, ImagePlus, Music, Plus, Trash2, Upload } from 'lucide-react';
+import { AlertTriangle, ChevronDown, ChevronUp, ImagePlus, Music, Plus, Trash2, Upload } from 'lucide-react';
 import {
   BACKGROUND_MODES,
   LINE_BREAK_MODES,
@@ -15,7 +15,7 @@ import {
   type MotionProject,
   type Theme,
 } from '@lms/shared';
-import type { FieldDescriptor } from '@lms/template-sdk';
+import type { FieldDescriptor, ListFieldDescriptor } from '@lms/template-sdk';
 import { useEditor } from '../stores/editor';
 
 /* ------------------------------------------------------------------ */
@@ -252,9 +252,9 @@ const AssetPicker = ({ accept, value, onChange }: { accept: 'image' | 'audio'; v
 /* Background editor                                                   */
 /* ------------------------------------------------------------------ */
 
-const MODE_LABEL: Record<(typeof BACKGROUND_MODES)[number], string> = { procedural: 'Procedural', solid: 'Sólida', gradient: 'Gradiente', image: 'Imagem' };
+const MODE_LABEL: Record<(typeof BACKGROUND_MODES)[number], string> = { procedural: 'Procedural', solid: 'Sólida', gradient: 'Gradiente', image: 'Imagem', inherit: 'Herdar' };
 
-const BackgroundEditor = ({ path, variants }: { path: FieldPath; variants: readonly { value: string; label: string }[] }) => {
+const BackgroundEditor = ({ path, variants, allowInherit }: { path: FieldPath; variants: readonly { value: string; label: string }[]; allowInherit: boolean }) => {
   const { value: bg } = useField<Background>(path);
   const update = useEditor((s) => s.update);
   const { palette } = usePaletteFor(path);
@@ -265,7 +265,12 @@ const BackgroundEditor = ({ path, variants }: { path: FieldPath; variants: reado
 
   return (
     <div style={{ display: 'grid', gap: 11 }}>
-      <Segmented value={bg.mode} options={BACKGROUND_MODES.map((m) => ({ value: m, label: MODE_LABEL[m] }))} onChange={(m) => set(['mode'], m)} />
+      <Segmented
+        value={bg.mode}
+        options={BACKGROUND_MODES.filter((m) => m !== 'inherit' || allowInherit || bg.mode === 'inherit').map((m) => ({ value: m, label: MODE_LABEL[m] }))}
+        onChange={(m) => set(['mode'], m)}
+      />
+      {bg.mode === 'inherit' && <div className="field-hint">Usa o background padrão da composição (em “Composição e estilo”). As configurações abaixo ficam guardadas.</div>}
       {bg.mode === 'procedural' && (
         <>
           <FieldShell label="Variação">
@@ -378,12 +383,62 @@ const BackgroundEditor = ({ path, variants }: { path: FieldPath; variants: reado
           </FieldShell>
         </>
       )}
-      {bg.mode !== 'procedural' && (
+      {bg.mode !== 'procedural' && bg.mode !== 'inherit' && (
         <div className="toggle-row">
           <span>Textura do template (grade)</span>
           <Switch on={bg.texture} label="Textura" onChange={(v) => set(['texture'], v)} />
         </div>
       )}
+    </div>
+  );
+};
+
+/* ------------------------------------------------------------------ */
+/* Repeatable groups (panels, nodes…)                                  */
+/* ------------------------------------------------------------------ */
+
+const ListEditor = ({ field, items }: { field: ListFieldDescriptor; items: unknown[] }) => {
+  const update = useEditor((s) => s.update);
+  const error = useEditor((s) => s.fieldErrors[pathKey(field.path)]);
+  const setItems = (next: unknown[]) => update(field.path, next);
+  const move = (i: number, d: number) => {
+    const next = [...items];
+    const [it] = next.splice(i, 1);
+    next.splice(i + d, 0, it);
+    setItems(next);
+  };
+  return (
+    <div className="field list-field">
+      <Label value={`${items.length}/${field.max}`}>{field.label}</Label>
+      {items.map((item, i) => {
+        const title = field.titlePath ? getAtPath(item, field.titlePath) : null;
+        return (
+          <div key={i} className="list-item">
+            <div className="list-item-head">
+              <b>
+                {field.itemLabel} {i + 1}
+                {typeof title === 'string' && title ? <span className="muted"> · {title}</span> : null}
+              </b>
+              <button className="icon-btn sm" title="Mover para cima" disabled={i === 0} onClick={() => move(i, -1)}>
+                <ChevronUp size={13} />
+              </button>
+              <button className="icon-btn sm" title="Mover para baixo" disabled={i === items.length - 1} onClick={() => move(i, 1)}>
+                <ChevronDown size={13} />
+              </button>
+              <button className="icon-btn sm" title="Remover" disabled={items.length <= field.min} onClick={() => setItems(items.filter((_, j) => j !== i))}>
+                <Trash2 size={13} />
+              </button>
+            </div>
+            {field.itemFields.map((f) => (
+              <FieldControl key={f.path.join('.')} field={{ ...f, path: [...field.path, i, ...f.path] } as FieldDescriptor} />
+            ))}
+          </div>
+        );
+      })}
+      <button className="btn sm" disabled={items.length >= field.max} onClick={() => setItems([...items, structuredClone(field.newItem)])}>
+        <Plus size={13} /> Adicionar {field.itemLabel.toLowerCase()}
+      </button>
+      {error ? <div className="field-error">{error}</div> : field.hint ? <div className="field-hint">{field.hint}</div> : null}
     </div>
   );
 };
@@ -494,7 +549,9 @@ export const FieldControl = ({ field }: { field: FieldDescriptor }) => {
         </div>
       );
     case 'background':
-      return <BackgroundEditor path={field.path} variants={field.proceduralVariants} />;
+      return <BackgroundEditor path={field.path} variants={field.proceduralVariants} allowInherit={Boolean(field.allowInherit)} />;
+    case 'list':
+      return <ListEditor field={field} items={(value as unknown[] | undefined) ?? []} />;
     case 'asset':
       return (
         <FieldShell label={field.label} {...(error ? { error } : {})}>

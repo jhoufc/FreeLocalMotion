@@ -22,10 +22,10 @@ import { withAlpha } from '@lms/shared';
 import type { SignatureScene } from '../../schema';
 import { CHOREO, entranceAt } from '../../timing';
 import { alignX, blockAnchor, signatureMark } from '../art';
-import { SceneBackground } from '../Background';
+import { SceneBackground } from '@lms/scene-kit';
 import type { SceneEnv } from '../context';
-import { DISPLAY, TEXT } from '../fonts';
-import { TextBlock, useTextLayout } from '../TextBlock';
+import { DISPLAY, TEXT } from '@lms/scene-kit';
+import { TextBlock, useTextLayout } from '@lms/scene-kit';
 
 const C = CHOREO.signature;
 

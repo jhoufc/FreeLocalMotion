@@ -88,7 +88,8 @@ export const createTemplateRegistry = <T extends AnyTemplateDefinition>(initial:
           description: t.description,
           tags: [...t.tags],
           formats: [...t.formats],
-          durationSeconds: meta.durationInFrames / meta.fps,
+          durationSeconds: defaults.scenes.some((s) => s.enabled) ? meta.durationInFrames / meta.fps : 0,
+          mode: t.mode ?? 'template',
         };
       }),
   };

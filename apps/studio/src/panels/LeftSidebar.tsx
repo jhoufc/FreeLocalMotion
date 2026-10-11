@@ -1,14 +1,15 @@
 import { useMemo, useRef, useState } from 'react';
 import { Player, Thumbnail } from '@remotion/player';
 import { Copy, Download, Eye, EyeOff, FolderOpen, Layers, LayoutTemplate, Plus, Trash2, Upload, Clapperboard } from 'lucide-react';
-import { getAtPath, type MotionProject } from '@lms/shared';
+import { getAtPath, type MotionProject, type ProjectSummary, type TemplateSummary } from '@lms/shared';
 import { TemplateStage, templateModules, type StageProps } from '@lms/catalog';
 import { useEditor } from '../stores/editor';
 import { usePlayback } from '../stores/playback';
 import { sceneAtFrame, type ProjectModel } from '../editor/useProjectModel';
 import { api } from '../api/client';
 import { KindIcon } from './KindIcon';
-import { NewProjectDialog } from '../components/NewProjectDialog';
+import { NewCreationDialog } from '../components/NewCreationDialog';
+import { TemplatesTab } from './TemplatesTab';
 import { SceneList } from './SceneList';
 
 type Tab = 'scene' | 'templates' | 'projects';
@@ -23,7 +24,7 @@ const ScenesTab = ({ project, model }: { project: MotionProject; model: ProjectM
   const update = useEditor((s) => s.update);
   const current = usePlayback((s) => sceneAtFrame(model.ranges, s.frame)?.id);
   const selectedTarget = model.targetsById.get(selected);
-  const activeSceneId = selectedTarget?.sceneId ?? current ?? project.scenes[0]!.id;
+  const activeSceneId = selectedTarget?.sceneId ?? current ?? project.scenes[0]?.id ?? null;
   const activeScene = project.scenes.find((s) => s.id === activeSceneId);
   const layers = model.targets.filter((t) => t.sceneId === activeSceneId && t.kind !== 'scene');
   const globals = model.targets.filter((t) => t.sceneId === null);
@@ -63,19 +64,23 @@ const ScenesTab = ({ project, model }: { project: MotionProject; model: ProjectM
       </div>
       <SceneList project={project} model={model} activeSceneId={activeSceneId} />
 
-      <div className="section-title">
-        <span>Elementos da cena</span>
-        <span style={{ textTransform: 'none', letterSpacing: 0, fontWeight: 500 }}>{activeScene?.name}</span>
-      </div>
-      <div className={`layer ${selected === activeSceneId ? 'on' : ''}`} onClick={() => select(activeSceneId)}>
-        <span className="kind kind-scene">
-          <Clapperboard size={13} />
-        </span>
-        <span className="name">Cena, background e layout</span>
-      </div>
-      {layers.map((t) => (
-        <LayerRow key={t.id} id={t.id} />
-      ))}
+      {activeSceneId && (
+        <>
+          <div className="section-title">
+            <span>Elementos da cena</span>
+            <span style={{ textTransform: 'none', letterSpacing: 0, fontWeight: 500 }}>{activeScene?.name}</span>
+          </div>
+          <div className={`layer ${selected === activeSceneId ? 'on' : ''}`} onClick={() => select(activeSceneId)}>
+            <span className="kind kind-scene">
+              <Clapperboard size={13} />
+            </span>
+            <span className="name">Cena, background e layout</span>
+          </div>
+          {layers.map((t) => (
+            <LayerRow key={t.id} id={t.id} />
+          ))}
+        </>
+      )}
 
       <div className="section-title">
         <span>Global</span>
@@ -92,78 +97,23 @@ const ScenesTab = ({ project, model }: { project: MotionProject; model: ProjectM
 /* Template library                                                    */
 /* ------------------------------------------------------------------ */
 
-const TemplatePreview = ({ templateId }: { templateId: string }) => {
-  const [hover, setHover] = useState(false);
-  const template = templateModules.get(templateId);
-  const project = useMemo(() => template.createDefaults({ id: 'library-preview', name: template.name, format: 'landscape', now: '1970-01-01T00:00:00.000Z' }), [template]);
-  const meta = template.getMetadata(project);
-  const inputProps = useMemo<StageProps>(() => ({ project, assetBaseUrl: '' }), [project]);
-  const common = {
-    component: TemplateStage,
-    inputProps,
-    compositionWidth: meta.width,
-    compositionHeight: meta.height,
-    durationInFrames: meta.durationInFrames,
-    fps: meta.fps,
-    style: { width: '100%', height: '100%' },
-  };
-  return (
-    <div className="preview" onMouseEnter={() => setHover(true)} onMouseLeave={() => setHover(false)}>
-      {hover ? <Player {...common} autoPlay loop controls={false} acknowledgeRemotionLicense /> : <Thumbnail {...common} frameToDisplay={Math.round(meta.fps * 1.9)} />}
-    </div>
-  );
-};
-
-const TemplatesTab = () => {
-  const templates = useEditor((s) => s.templates);
-  const [creating, setCreating] = useState<string | null>(null);
-  return (
-    <div className="scroll">
-      <div className="section-title">
-        <span>Biblioteca</span>
-        <span>{templates.length}</span>
-      </div>
-      {templates.map((t) => (
-        <div key={t.id} className="template-card">
-          <TemplatePreview templateId={t.id} />
-          <div className="info">
-            <div className="field-row" style={{ justifyContent: 'space-between' }}>
-              <b>{t.name}</b>
-              <span className="mono muted" style={{ fontSize: 10.5 }}>
-                v{t.version} · {t.durationSeconds.toFixed(0)}s
-              </span>
-            </div>
-            <span className="muted">{t.description}</span>
-            <div className="tags">
-              {t.tags.map((tag) => (
-                <span key={tag} className="tag">
-                  {tag}
-                </span>
-              ))}
-              <span className="tag">9:16 + 16:9</span>
-            </div>
-            <button className="btn primary" style={{ justifyContent: 'center', marginTop: 4 }} onClick={() => setCreating(t.id)}>
-              <Plus size={14} /> Novo projeto com este template
-            </button>
-          </div>
-        </div>
-      ))}
-      <div className="template-card soon">
-        <div className="info">
-          <b>Adicionar um template</b>
-          <span className="muted">
-            Novos templates registram schema, composição, campos e timeline no registry — sem alterar o editor. Veja <span className="mono">docs/creating-templates.md</span>.
-          </span>
-        </div>
-      </div>
-      {creating && <NewProjectDialog templateId={creating} onClose={() => setCreating(null)} />}
-    </div>
-  );
-};
-
 /* ------------------------------------------------------------------ */
 /* Projects                                                            */
 /* ------------------------------------------------------------------ */
+
+const originLabel = (origin: ProjectSummary['origin'], templates: TemplateSummary[]): string | null => {
+  if (!origin) return null;
+  switch (origin.kind) {
+    case 'blank':
+      return 'Livre';
+    case 'template':
+      return templates.find((t) => t.id === origin.templateId)?.name ?? origin.templateId;
+    case 'user-template':
+      return `de ${origin.name}`;
+    case 'template-draft':
+      return `Rascunho · ${origin.name}`;
+  }
+};
 
 const ProjectsTab = () => {
   const projects = useEditor((s) => s.projects);
@@ -180,7 +130,7 @@ const ProjectsTab = () => {
       </div>
       <div style={{ display: 'flex', gap: 6, padding: '0 10px 10px' }}>
         <button className="btn sm" onClick={() => setCreating(true)} disabled={!templates[0]}>
-          <Plus size={13} /> Novo
+          <Plus size={13} /> Nova criação
         </button>
         <button className="btn sm" onClick={() => fileRef.current?.click()}>
           <Upload size={13} /> Importar JSON
@@ -201,7 +151,10 @@ const ProjectsTab = () => {
         <div key={p.id} className={`project-row ${p.id === current ? 'on' : ''}`} onClick={() => p.id !== current && void openProject(p.id)}>
           <FolderOpen size={15} style={{ color: 'var(--text-2)', flex: 'none' }} />
           <div className="grow">
-            <b>{p.name}</b>
+            <b>
+              {p.name}
+              {originLabel(p.origin, templates) && <span className="origin-badge">{originLabel(p.origin, templates)}</span>}
+            </b>
             <span>
               {p.format === 'portrait' ? '9:16' : '16:9'} · {new Date(p.updatedAt).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' })}
             </span>
@@ -222,7 +175,7 @@ const ProjectsTab = () => {
         </div>
       ))}
       {projects.length === 0 && <div className="empty">Nenhum projeto ainda.</div>}
-      {creating && templates[0] && <NewProjectDialog templateId={templates[0].id} onClose={() => setCreating(false)} />}
+      {creating && <NewCreationDialog onClose={() => setCreating(false)} />}
     </div>
   );
 };

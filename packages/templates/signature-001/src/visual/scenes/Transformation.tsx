@@ -19,10 +19,10 @@ import {
 import { mixHex, withAlpha } from '@lms/shared';
 import type { TransformationScene } from '../../schema';
 import { CHOREO, TRANSFORMATION_CLOCK } from '../../timing';
-import { SceneBackground } from '../Background';
+import { SceneBackground } from '@lms/scene-kit';
 import type { SceneEnv } from '../context';
-import { DISPLAY, MONO } from '../fonts';
-import { useTextLayout, type ResolvedText } from '../TextBlock';
+import { DISPLAY, MONO } from '@lms/scene-kit';
+import { useTextLayout, type ResolvedText } from '@lms/scene-kit';
 
 const C = CHOREO.transformation;
 const FOCAL = 1000;

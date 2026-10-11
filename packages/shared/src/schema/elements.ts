@@ -57,7 +57,11 @@ export type GraphicElement = z.infer<typeof graphicElementSchema>;
 /* Backgrounds                                                         */
 /* ------------------------------------------------------------------ */
 
-export const BACKGROUND_MODES = ['procedural', 'solid', 'gradient', 'image'] as const;
+/**
+ * `inherit` renders the composition's default background (free compositions); where no
+ * default exists it falls back to the scene's procedural settings.
+ */
+export const BACKGROUND_MODES = ['procedural', 'solid', 'gradient', 'image', 'inherit'] as const;
 export const backgroundModeSchema = z.enum(BACKGROUND_MODES);
 export type BackgroundMode = z.infer<typeof backgroundModeSchema>;
 

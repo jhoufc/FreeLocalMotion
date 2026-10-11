@@ -1,8 +1,8 @@
-import { Grain, progress, round, type FrameLayout } from '@lms/motion-core';
+import { progress, round, type FrameLayout } from '@lms/motion-core';
 import { mergePalette, resolveColor, withAlpha } from '@lms/shared';
 import { sceneAtFrame, type SceneRange } from '@lms/template-sdk';
 import type { SignatureProject } from '../schema';
-import { MONO } from './fonts';
+import { FinishOverlays, MONO } from '@lms/scene-kit';
 
 const pad2 = (n: number) => String(Math.floor(n)).padStart(2, '0');
 
@@ -113,25 +113,6 @@ export const Hud = ({
   );
 };
 
-export const Finish = ({ project, t }: { project: SignatureProject; t: number }) => {
-  const { grain, vignette } = project.globals;
-  return (
-    <>
-      {vignette.visible ? (
-        <div
-          data-lms-target="global.vignette"
-          style={{
-            position: 'absolute',
-            inset: 0,
-            pointerEvents: 'none',
-            background: `radial-gradient(ellipse ${round(120 - vignette.intensity * 25, 2)}% ${round(110 - vignette.intensity * 25, 2)}% at 50% 50%, transparent 45%, ${withAlpha(
-              resolveColor(vignette.color, project.theme),
-              vignette.opacity,
-            )} 100%)`,
-          }}
-        />
-      ) : null}
-      {grain.visible ? <Grain t={t} opacity={0.075 * grain.intensity * grain.opacity} seed="signature-grain" /> : null}
-    </>
-  );
-};
+export const Finish = ({ project, t }: { project: SignatureProject; t: number }) => (
+  <FinishOverlays grain={project.globals.grain} vignette={project.globals.vignette} theme={project.theme} t={t} seed="signature-grain" />
+);

@@ -13,3 +13,7 @@ export * from './components/Blur';
 export * from './components/MaskReveal';
 export * from './components/KineticText';
 export * from './components/Grain';
+export * from './physics';
+export * from './shapes';
+export * from './counter';
+export * from './components/Motion';

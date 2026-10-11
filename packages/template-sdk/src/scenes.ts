@@ -1,4 +1,4 @@
-import { MAX_SCENES, createId, secondsToFrames, type MotionProject, type MotionSceneBase } from '@lms/shared';
+import { MAX_SCENES, createId, secondsToFrames, type MotionProject, type MotionSceneBase, type SceneCategory } from '@lms/shared';
 
 /* ------------------------------------------------------------------ */
 /* Scene definitions: the reusable animations a template offers.       */
@@ -29,22 +29,45 @@ export interface SceneDurationSpec {
  * Data side of a scene type (no React). The template's composition maps `id` to a view;
  * the editor uses this to list, create and constrain instances.
  */
+/** Visual family a scene type belongs to (its origin), e.g. "Signature / 001". */
+export interface SceneFamily {
+  id: string;
+  name: string;
+}
+
 export interface SceneDefinition {
-  /** Stable id stored in `scene.type`. */
+  /** Stable, global id stored in `scene.type`. */
   id: string;
   name: string;
   description: string;
+  category: SceneCategory;
+  family: SceneFamily;
+  /** Semver of the scene type (its data shape and choreography). */
+  version: string;
   duration: SceneDurationSpec;
   /** Scene-local seconds where the scene reads best as a still (thumbnails). */
   heroTime: number;
+  /**
+   * Optional per-instance override of `heroTime`, for scenes whose readable moment depends
+   * on their data (e.g. word slots that shrink with the word count). Receives the instance.
+   */
+  heroTimeOf?: (scene: unknown) => number;
 }
 
 export const isDurationEditable = (def: Pick<SceneDefinition, 'duration'>): boolean =>
   def.duration.strategy !== 'fixed' && def.duration.max > def.duration.min;
 
-/** Scene-local frame for a representative still of an instance with the given duration. */
-export const heroFrameOf = (def: Pick<SceneDefinition, 'duration' | 'heroTime'>, duration: number, fps: number): number => {
-  const t = def.duration.strategy === 'proportional' ? (def.heroTime * duration) / def.duration.default : def.heroTime;
+/**
+ * Scene-local frame for a representative still of an instance with the given duration.
+ * Pass the instance when available so data-dependent scenes (`heroTimeOf`) pick a readable frame.
+ */
+export const heroFrameOf = (def: Pick<SceneDefinition, 'duration' | 'heroTime' | 'heroTimeOf'>, duration: number, fps: number, scene?: unknown): number => {
+  const t =
+    scene !== undefined && def.heroTimeOf
+      ? def.heroTimeOf(scene)
+      : def.duration.strategy === 'proportional'
+        ? (def.heroTime * duration) / def.duration.default
+        : def.heroTime;
   return Math.max(0, Math.min(secondsToFrames(duration, fps) - 1, Math.round(Math.min(t, duration * 0.9) * fps)));
 };
 
@@ -172,11 +195,18 @@ export const duplicateScene = <P extends MotionProject>(project: P, id: string, 
   return { project: insertScene(project, copy, i + 1), scene: copy };
 };
 
-export const removeScene = <P extends MotionProject>(project: P, id: string): P => {
+/** Rules of the scene list. Free compositions may become empty; template projects may not. */
+export interface SceneListPolicy {
+  allowEmpty?: boolean;
+}
+
+export const removeScene = <P extends MotionProject>(project: P, id: string, policy: SceneListPolicy = {}): P => {
   const i = indexOrThrow(project, id);
-  if (project.scenes.length <= 1) throw new SceneOperationError('O projeto precisa de pelo menos uma cena');
   const scenes = project.scenes.filter((_, j) => j !== i) as SceneOf<P>[];
-  if (!scenes.some((s) => s.enabled)) throw new SceneOperationError('O vídeo precisa de pelo menos uma cena ativa');
+  if (!policy.allowEmpty) {
+    if (scenes.length === 0) throw new SceneOperationError('O projeto precisa de pelo menos uma cena');
+    if (!scenes.some((s) => s.enabled)) throw new SceneOperationError('O vídeo precisa de pelo menos uma cena ativa');
+  }
   return withScenes(project, scenes);
 };
 
@@ -211,8 +241,8 @@ export const setSceneDuration = <P extends MotionProject>(project: P, id: string
   return patchScene(project, id, { duration: clamped });
 };
 
-export const setSceneEnabled = <P extends MotionProject>(project: P, id: string, enabled: boolean): P => {
+export const setSceneEnabled = <P extends MotionProject>(project: P, id: string, enabled: boolean, policy: SceneListPolicy = {}): P => {
   const next = patchScene(project, id, { enabled });
-  if (!next.scenes.some((s) => s.enabled)) throw new SceneOperationError('O vídeo precisa de pelo menos uma cena ativa');
+  if (!policy.allowEmpty && !next.scenes.some((s) => s.enabled)) throw new SceneOperationError('O vídeo precisa de pelo menos uma cena ativa');
   return next;
 };

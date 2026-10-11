@@ -19,10 +19,10 @@ import { withAlpha } from '@lms/shared';
 import type { ImpactScene } from '../../schema';
 import { CHOREO, entranceAt } from '../../timing';
 import { alignShift, alignX, blockAnchor } from '../art';
-import { SceneBackground } from '../Background';
+import { SceneBackground } from '@lms/scene-kit';
 import type { SceneEnv } from '../context';
-import { DISPLAY, MONO } from '../fonts';
-import { TextBlock, useTextLayout } from '../TextBlock';
+import { DISPLAY, MONO } from '@lms/scene-kit';
+import { TextBlock, useTextLayout } from '@lms/scene-kit';
 
 const C = CHOREO.impact;
 const GLYPHS = 'ABCDEFGHJKLMNPQRSTUVWXYZ0123456789/#+=<>';

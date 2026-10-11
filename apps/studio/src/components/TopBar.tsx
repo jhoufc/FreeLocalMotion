@@ -1,9 +1,10 @@
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
-import { ChevronDown, Copy, Download, FilePlus2, Redo2, RotateCcw, Save, Undo2, Upload } from 'lucide-react';
+import { BookmarkPlus, ChevronDown, Copy, Download, FilePlus2, Redo2, RotateCcw, Save, Send, Undo2, Upload } from 'lucide-react';
 import type { MotionProject } from '@lms/shared';
 import { api } from '../api/client';
 import { useEditor } from '../stores/editor';
-import { NewProjectDialog } from './NewProjectDialog';
+import { NewCreationDialog } from './NewCreationDialog';
+import { SaveTemplateDialog } from './SaveTemplateDialog';
 import { RenderButton } from './RenderPanel';
 import { useDismiss } from './ui';
 
@@ -28,6 +29,9 @@ export const TopBar = ({ project }: { project: MotionProject }) => {
   const [name, setName] = useState(project.name);
   const [menu, setMenu] = useState(false);
   const [creating, setCreating] = useState(false);
+  const [savingTemplate, setSavingTemplate] = useState(false);
+  const free = templates.find((t) => t.id === project.templateId)?.mode === 'free';
+  const origin = project.origin;
   const fileRef = useRef<HTMLInputElement>(null);
   const menuBtn = useRef<HTMLDivElement>(null);
   const menuPop = useRef<HTMLDivElement>(null);
@@ -70,18 +74,23 @@ export const TopBar = ({ project }: { project: MotionProject }) => {
         </button>
         {menu && (
           <div className="popover" ref={menuPop} style={{ top: 34, left: 0, width: 250 }}>
-            {item(<FilePlus2 size={14} />, 'Novo projeto…', () => setCreating(true))}
+            {item(<FilePlus2 size={14} />, 'Nova criação…', () => setCreating(true))}
             {item(<Save size={14} />, 'Salvar', () => void save(), 'Ctrl S')}
             {item(<Copy size={14} />, 'Duplicar', () => void duplicateProject())}
+            <div className="divider" />
+            {origin.kind === 'template-draft'
+              ? item(<Send size={14} />, 'Publicar nova revisão do template', () => void useEditor.getState().publishDraft())
+              : item(<BookmarkPlus size={14} />, 'Salvar como template…', () => setSavingTemplate(true))}
             <div className="divider" />
             {item(<Download size={14} />, 'Exportar configuração JSON', () => {
               void save().then(() => window.location.assign(api.exportUrl(project.id)));
             })}
             {item(<Upload size={14} />, 'Importar configuração JSON…', () => fileRef.current?.click())}
             <div className="divider" />
-            {item(<RotateCcw size={14} />, 'Restaurar valores originais', () => {
-              if (confirm('Restaurar todos os textos, cores, backgrounds e animações para os valores do template? (Pode desfazer com Ctrl+Z)')) resetProject();
-            }, undefined, true)}
+            {!free &&
+              item(<RotateCcw size={14} />, 'Restaurar valores originais', () => {
+                if (confirm('Restaurar todos os textos, cores, backgrounds e animações para os valores do template? (Pode desfazer com Ctrl+Z)')) resetProject();
+              }, undefined, true)}
           </div>
         )}
       </div>
@@ -117,11 +126,23 @@ export const TopBar = ({ project }: { project: MotionProject }) => {
         <Redo2 size={15} />
       </button>
       <div className="spacer" />
-      <span className="muted" style={{ fontSize: 11.5 }}>
-        {templates.find((t) => t.id === project.templateId)?.name}
-      </span>
+      {origin.kind === 'template-draft' ? (
+        <div className="draft-banner">
+          <span>
+            Editando template <b>{origin.name}</b> · base rev. {origin.revision}
+          </span>
+          <button className="btn sm primary" onClick={() => void useEditor.getState().publishDraft()} title="Grava esta composição como nova revisão. Projetos já criados não mudam.">
+            <Send size={13} /> Publicar revisão
+          </button>
+        </div>
+      ) : (
+        <span className="muted" style={{ fontSize: 11.5 }}>
+          {origin.kind === 'user-template' ? `Template: ${origin.name} · rev. ${origin.revision}` : templates.find((t) => t.id === project.templateId)?.name}
+        </span>
+      )}
       <RenderButton />
-      {creating && <NewProjectDialog templateId={project.templateId} onClose={() => setCreating(false)} />}
+      {creating && <NewCreationDialog onClose={() => setCreating(false)} />}
+      {savingTemplate && <SaveTemplateDialog project={project} onClose={() => setSavingTemplate(false)} />}
     </header>
   );
 };

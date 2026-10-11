@@ -1,0 +1,28 @@
+{
+  "name": "@lms/scene-kit",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Shared toolkit for scene types: bundled fonts, text layout, backgrounds and inspector field builders.",
+  "exports": {
+    ".": "./src/index.ts",
+    "./fields": "./src/fields.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc -p tsconfig.json"
+  },
+  "dependencies": {
+    "@lms/motion-core": "workspace:*",
+    "@lms/shared": "workspace:*",
+    "@lms/template-sdk": "workspace:*",
+    "remotion": "4.0.534",
+    "zod": "^4.1.12"
+  },
+  "peerDependencies": {
+    "react": ">=18"
+  },
+  "devDependencies": {
+    "@types/react": "^19.1.0",
+    "react": "^19.1.0"
+  }
+}

@@ -1,9 +1,10 @@
 import type { ReactNode } from 'react';
 import { Img } from 'remotion';
 import { drift, round } from '@lms/motion-core';
-import { useAssets } from '@lms/template-sdk';
+import { useAssets, type SceneRuntime } from '@lms/template-sdk';
 import { withAlpha, type Background } from '@lms/shared';
-import type { SceneEnv } from './context';
+
+type SceneEnv = SceneRuntime;
 
 const fill = { position: 'absolute', inset: 0 } as const;
 
@@ -164,11 +165,12 @@ const ImageBackground = ({ env, bg }: { env: SceneEnv; bg: Background }) => {
 };
 
 /**
- * Scene background in any of the four modes. `focus` lets the scene aim the procedural
+ * Scene background in any of its modes (procedural variants, solid, gradient, image). `focus` lets the scene aim the procedural
  * light at its own center of interest (e.g. the energy core).
  */
 export const SceneBackground = ({ env, focus }: { env: SceneEnv; focus?: { x: number; y: number } }) => {
-  const bg = env.scene.background;
+  // `inherit` is already resolved by the runtime (composition default background).
+  const bg = env.background;
   const f = focus ?? { x: env.layout.cx, y: env.layout.cy };
   let content: ReactNode;
   switch (bg.mode) {

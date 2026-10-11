@@ -55,6 +55,8 @@ export interface ToggleFieldDescriptor extends FieldBase {
 export interface BackgroundFieldDescriptor extends FieldBase {
   type: 'background';
   proceduralVariants: readonly { value: string; label: string }[];
+  /** Offer the "inherit" mode (the composition's default background). */
+  allowInherit?: boolean;
 }
 
 export interface AssetFieldDescriptor extends FieldBase {
@@ -67,6 +69,31 @@ export interface LineBreaksFieldDescriptor extends FieldBase {
   type: 'line-breaks';
 }
 
+/**
+ * Repeatable group of values with bounds (panels, orbit nodes…). `itemFields` paths are
+ * relative to one item; the editor prefixes them with `[...path, index]`.
+ */
+export interface ListFieldDescriptor extends FieldBase {
+  type: 'list';
+  min: number;
+  max: number;
+  /** Singular label for an item ("Painel" → "Painel 1"). */
+  itemLabel: string;
+  itemFields: readonly ItemFieldDescriptor[];
+  /** Value appended by "Adicionar". */
+  newItem: unknown;
+  /** Field (relative path) whose value titles each item in the list, if any. */
+  titlePath?: FieldPath;
+}
+
+export type ItemFieldDescriptor =
+  | TextFieldDescriptor
+  | ColorFieldDescriptor
+  | NumberFieldDescriptor
+  | SelectFieldDescriptor
+  | ToggleFieldDescriptor
+  | AssetFieldDescriptor;
+
 export type FieldDescriptor =
   | TextFieldDescriptor
   | ColorFieldDescriptor
@@ -76,7 +103,8 @@ export type FieldDescriptor =
   | ToggleFieldDescriptor
   | BackgroundFieldDescriptor
   | AssetFieldDescriptor
-  | LineBreaksFieldDescriptor;
+  | LineBreaksFieldDescriptor
+  | ListFieldDescriptor;
 
 export type FieldType = FieldDescriptor['type'];
 
@@ -140,12 +168,23 @@ export const field = {
     segmented = false,
   ): SelectFieldDescriptor => ({ type: 'select', path, label, options, segmented }),
   toggle: (path: FieldPath, label: string, hint?: string): ToggleFieldDescriptor => ({ type: 'toggle', path, label, ...(hint ? { hint } : {}) }),
-  background: (path: FieldPath, label: string, proceduralVariants: BackgroundFieldDescriptor['proceduralVariants']): BackgroundFieldDescriptor => ({
+  background: (
+    path: FieldPath,
+    label: string,
+    proceduralVariants: BackgroundFieldDescriptor['proceduralVariants'],
+    allowInherit = false,
+  ): BackgroundFieldDescriptor => ({
     type: 'background',
     path,
     label,
     proceduralVariants,
+    ...(allowInherit ? { allowInherit } : {}),
   }),
+  list: (
+    path: FieldPath,
+    label: string,
+    opts: { min: number; max: number; itemLabel: string; itemFields: readonly ItemFieldDescriptor[]; newItem: unknown; titlePath?: FieldPath; hint?: string },
+  ): ListFieldDescriptor => ({ type: 'list', path, label, ...opts }),
   asset: (path: FieldPath, label: string, accept: 'image' | 'audio'): AssetFieldDescriptor => ({ type: 'asset', path, label, accept }),
   lineBreaks: (path: FieldPath, label = 'Quebra de linha'): LineBreaksFieldDescriptor => ({ type: 'line-breaks', path, label }),
 };

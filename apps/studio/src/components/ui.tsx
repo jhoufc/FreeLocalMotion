@@ -23,7 +23,7 @@ export const useDismiss = (open: boolean, onClose: () => void, ...refs: RefObjec
   }, [open, onClose]);
 };
 
-export const Dialog = ({ title, children, footer, onClose }: { title: string; children: ReactNode; footer: ReactNode; onClose: () => void }) => {
+export const Dialog = ({ title, children, footer, onClose, wide = false }: { title: string; children: ReactNode; footer: ReactNode; onClose: () => void; wide?: boolean }) => {
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => e.key === 'Escape' && onClose();
     window.addEventListener('keydown', onKey);
@@ -31,7 +31,7 @@ export const Dialog = ({ title, children, footer, onClose }: { title: string; ch
   }, [onClose]);
   return (
     <div className="backdrop" onPointerDown={(e) => e.target === e.currentTarget && onClose()}>
-      <div className="dialog" role="dialog" aria-label={title}>
+      <div className={`dialog ${wide ? 'wide' : ''}`} role="dialog" aria-label={title}>
         <header>{title}</header>
         <div className="body">{children}</div>
         <footer>{footer}</footer>

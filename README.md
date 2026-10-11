@@ -46,6 +46,10 @@ Variáveis opcionais: `LMS_PORT`, `LMS_HOST`, `LMS_PROJECTS_DIR`, `LMS_EXPORTS_D
 |---|---|
 | Criar projeto | Aba **Templates** → *Novo projeto com este template*, ou menu **Projeto → Novo projeto…** |
 | Abrir / duplicar / excluir | Aba **Projetos** |
+| Nova criação | **Projeto → Nova criação…** ou aba **Templates**: *Composição livre* (timeline vazia, 9:16, 30 fps) ou *A partir de um template* (nativo ou seu) |
+| Biblioteca de cenas | **+ Adicionar cena**: 24 cenas de 3 famílias (Signature / 001, Studio Premium, Studio Motion) com busca, categorias, miniaturas reais e preview ao passar o mouse |
+| Composições prontas | Aba **Templates → Composições prontas** (App Launch, Showreel, Digital Product, Product Commercial, Creator Intro): cria um projeto livre totalmente editável |
+| Salvar como template | **Projeto → Salvar como template…** (nome, descrição, categoria). Aba **Templates → Meus templates**: criar projeto, editar (publica nova revisão), renomear, duplicar, excluir |
 | Compor cenas | Aba **Cenas**: menu ⋯ de cada cena (renomear, duplicar, mover, ocultar do vídeo, excluir), arraste pela alça ⋮⋮ para reordenar, **+ Adicionar cena** no fim ou no **+** entre cenas. Cada ocorrência é independente; a animação é a mesma do tipo |
 | Selecionar elemento | Clique direto no canvas, na lista *Elementos da cena* ou numa trilha da timeline |
 | Editar | Painel direito (inspector): texto, quebra de linha por formato, tipografia, cores (tokens do tema ou hex), background, elementos, layout por formato, animação |
@@ -66,6 +70,7 @@ As edições são validadas contra o schema do template antes de serem aplicadas
 ```
 projects/<id>/project.json        documento do projeto (schemaVersion, validado)
 projects/<id>/project.backup-*.json  original guardado quando o projeto é migrado de versão
+templates/<id>/                   templates do usuário: revisões, assets copiados e miniaturas
 projects/<id>/assets/<asset>.ext  uploads copiados com nome estável
 exports/*.mp4                     vídeos exportados pelo Studio
 exports/jobs.json                 histórico de renderizações
@@ -82,6 +87,9 @@ pnpm render:samples   # renderiza os MP4 de amostra (9:16 e 16:9) pelo pipeline 
 pnpm verify:videos    # ffprobe: codec, dimensões, fps, frames, duração + frames representativos + contact sheet
 pnpm render:stills    # PNGs de frames específicos (QA visual): pnpm render:stills 1.6 7.0 13.2
 pnpm render:composition  # MP4s de um projeto com cenas repetidas/movidas/desabilitadas; verifique com verify:videos
+pnpm render:free         # composição livre com cenas novas + Signature nos dois formatos, salva como template e checa assets
+pnpm render:starters     # as cinco composições prontas nos dois formatos (com sidecar para verify:videos)
+pnpm render:scene-stills # QA visual de cada tipo de cena: início/meio/fim nos dois formatos (pnpm render:scene-stills --premium)
 ```
 
 ## Estrutura
@@ -94,15 +102,18 @@ packages/
   shared/          tipos, schemas Zod do envelope, cores, formatos, contratos da API, migrações
   motion-core/     motor de animação determinístico (spring analítico, easing, stagger,
                    máscaras, blur direcional, tipografia cinética, câmera 2.5D, layout responsivo)
-  template-sdk/    contrato MotionTemplate, descritores de campos, timeline, registry, validação
+  template-sdk/    contratos de template e de tipo de cena, campos, timeline, registries, validação
+  scene-kit/       toolkit das cenas: fontes OFL, texto, backgrounds, builders de campos/camadas
+  scenes-premium/  família Studio Premium (8 tipos de cena)
+  scenes-motion/   família Studio Motion (12 tipos de cena)
   templates/
-    signature-001/ o primeiro template (schema, defaults, coreografia, 4 cenas, fontes OFL)
-  catalog/         registry concreto + TemplateStage (usado pelo Player e pelo renderer) + entry do Remotion
-scripts/           render-samples, verify-videos, render-stills
+    signature-001/ o primeiro template e suas 4 cenas (tipos globais)
+  catalog/         registries (templates + biblioteca global de cenas), composição livre, TemplateStage, entry do Remotion
+scripts/           render-samples, render-composition, render-free, render-starters, render-scene-stills, verify-videos, render-stills
 docs/              arquitetura, SDK, renderização, criação de templates
 ```
 
-Documentação: [arquitetura](docs/architecture.md) · [Template SDK](docs/template-sdk.md) · [renderização](docs/rendering.md) · [criando templates](docs/creating-templates.md).
+Documentação: [arquitetura](docs/architecture.md) · [Template SDK](docs/template-sdk.md) · [Scene SDK](docs/scene-sdk.md) · [renderização](docs/rendering.md) · [criando templates](docs/creating-templates.md).
 
 ## Licenças
 

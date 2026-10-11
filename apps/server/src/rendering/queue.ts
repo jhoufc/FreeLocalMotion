@@ -84,6 +84,7 @@ export class RenderQueue {
     const raw = input.project ?? saved;
     const { project } = this.opts.store.validate(raw);
     if (project.id !== saved.id) throw new HttpError(400, 'Project id mismatch');
+    if (!project.scenes.some((s) => s.enabled)) throw new HttpError(422, 'A composição não tem cenas ativas: adicione ao menos uma cena antes de exportar.');
     const format = input.format ?? project.format;
     const template = this.opts.templates.get(project.templateId);
     if (!template.formats.includes(format)) throw new HttpError(400, `Template does not support ${format}`);

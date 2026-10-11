@@ -80,7 +80,7 @@ const InsertPoint = ({ index, onAdd, dropActive }: { index: number; onAdd: (inde
   </div>
 );
 
-export const SceneList = ({ project, model, activeSceneId }: { project: MotionProject; model: ProjectModel; activeSceneId: string }) => {
+export const SceneList = ({ project, model, activeSceneId }: { project: MotionProject; model: ProjectModel; activeSceneId: string | null }) => {
   const select = useEditor((s) => s.select);
   const current = usePlayback((s) => sceneAtFrame(model.ranges, s.frame)?.id);
   const [menuFor, setMenuFor] = useState<string | null>(null);
@@ -144,6 +144,19 @@ export const SceneList = ({ project, model, activeSceneId }: { project: MotionPr
     window.addEventListener('pointerup', up);
     window.addEventListener('keydown', key, true);
   };
+
+  if (count === 0) {
+    return (
+      <div className="empty-state">
+        <b>Nenhuma cena ainda</b>
+        <span>Monte o vídeo com cenas da biblioteca — de qualquer família, em qualquer ordem.</span>
+        <button className="btn primary" onClick={() => setAdding(0)}>
+          <Plus size={14} /> Adicionar primeira cena
+        </button>
+        {adding !== null && <AddSceneDialog project={project} atIndex={0} onClose={() => setAdding(null)} />}
+      </div>
+    );
+  }
 
   return (
     <div className={`scene-list ${drag ? 'reordering' : ''}`} ref={listRef}>

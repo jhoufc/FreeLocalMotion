@@ -166,6 +166,7 @@ describe('migration from 1.0.0 (fixed scenes, schema v1)', () => {
     const p = structuredClone(make('portrait')) as unknown as Record<string, unknown> & { scenes: Record<string, unknown>[] };
     p.schemaVersion = 1;
     p.templateVersion = '1.0.0';
+    delete p.origin;
     p.scenes = p.scenes.map(({ type: _t, enabled: _e, ...rest }) => rest);
     const impact = p.scenes[0] as { name: string; duration: number; texts: { lineA: { content: string } }; palette: { accent: string | null } };
     impact.name = 'Abertura';
@@ -183,8 +184,9 @@ describe('migration from 1.0.0 (fixed scenes, schema v1)', () => {
     if (!r.ok) return;
     expect(r.migrated).toBe(true);
     const p = r.project;
-    expect(p.schemaVersion).toBe(2);
+    expect(p.schemaVersion).toBe(3);
     expect(p.templateVersion).toBe('1.1.0');
+    expect(p.origin).toEqual({ kind: 'template', templateId: 'signature-001', version: '1.0.0' });
     expect(p.scenes.map((s) => [s.id, s.type, s.enabled])).toEqual([
       ['impact', 'impact', true],
       ['energy', 'energy', true],

@@ -62,6 +62,19 @@ describe('render pipeline', () => {
     expect(engine.calls[0]!.format).toBe('landscape');
   });
 
+  it('10 + 12 + 17: renders a free composition with its computed duration and refuses an empty one', async () => {
+    const blank = await store.create('composition', { format: 'portrait' });
+    await expect(queue.submit({ projectId: blank.id })).rejects.toMatchObject({ status: 422 });
+    const template = templateDefinitions.get('composition');
+    const scenes = ['kinetic-type', 'impact', 'cinematic-outro'].map((type, i) => template.createScene(type, { id: `s-${i}`, name: type }));
+    const p = await store.save(blank.id, { ...blank, scenes });
+    const job = await queue.submit({ projectId: p.id, format: 'landscape' });
+    expect(job).toMatchObject({ width: 1920, height: 1080, fps: 30, durationInFrames: (4 + 3 + 5) * 30 });
+    await queue.idle();
+    expect(queue.get(job.id).status).toBe('succeeded');
+    expect(engine.calls[0]!.project.scenes.map((s) => s.type)).toEqual(['kinetic-type', 'impact', 'cinematic-outro']);
+  });
+
   it('freezes a snapshot: later edits do not leak into a queued job', async () => {
     const p = await store.create('signature-001');
     const edited = setAtPath(p, ['scenes', 0, 'texts', 'lineA', 'content'], 'Snapshot');
@@ -124,7 +137,7 @@ describe('HTTP API', () => {
     const base = `http://127.0.0.1:${(server.address() as AddressInfo).port}/api`;
     try {
       const templates = (await (await fetch(`${base}/templates`)).json()) as { id: string }[];
-      expect(templates.map((t) => t.id)).toEqual(['signature-001']);
+      expect(templates.map((t) => t.id)).toEqual(['signature-001', 'composition']);
 
       const created = await fetch(`${base}/projects`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ templateId: 'signature-001', name: 'API' }) });
       expect(created.status).toBe(201);

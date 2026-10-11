@@ -98,12 +98,16 @@ describe('migrations', () => {
       ],
     };
     const v2 = migrateEnvelope(structuredClone(v1));
-    expect(v2.schemaVersion).toBe(2);
+    expect(v2.schemaVersion).toBe(3);
     expect(v2.scenes).toEqual([
       { id: 'impact', type: 'impact', enabled: true, name: 'Abertura', duration: 4.2, texts: { lineA: { content: 'O FUTURO' } } },
       { id: 'energy', type: 'energy', enabled: true, name: 'Energy', duration: 3 },
     ]);
     expect(v2.name).toBe('Old');
+  });
+  it('v2 -> v3 records the native template as origin', () => {
+    const v3 = migrateEnvelope({ schemaVersion: 2, templateId: 'signature-001', templateVersion: '1.1.0', scenes: [] });
+    expect(v3).toMatchObject({ schemaVersion: 3, origin: { kind: 'template', templateId: 'signature-001', version: '1.1.0' } });
   });
   it('rejects documents from the future and non-objects', () => {
     expect(() => migrateEnvelope({ schemaVersion: 999 })).toThrow(MigrationError);

@@ -20,10 +20,10 @@ import { withAlpha } from '@lms/shared';
 import type { EnergyScene } from '../../schema';
 import { CHOREO, entranceAt } from '../../timing';
 import { alignShift, alignX, blockAnchor, energyCore } from '../art';
-import { SceneBackground } from '../Background';
+import { SceneBackground } from '@lms/scene-kit';
 import type { SceneEnv } from '../context';
-import { DISPLAY, MONO } from '../fonts';
-import { TextBlock, useTextLayout } from '../TextBlock';
+import { DISPLAY, MONO } from '@lms/scene-kit';
+import { TextBlock, useTextLayout } from '@lms/scene-kit';
 
 const C = CHOREO.energy;
 const WAVE_LIFE = 1.7;

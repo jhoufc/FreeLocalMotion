@@ -173,6 +173,7 @@ export const createSignatureDefaults = (init: ProjectInit): SignatureProject => 
   theme: { ...DEFAULT_THEME },
   audio: { assetId: null, volume: 0.9, fadeIn: 0, fadeOut: 1.2 },
   assets: [],
+  origin: { kind: 'template', templateId: TEMPLATE_ID, version: TEMPLATE_VERSION },
   createdAt: init.now,
   updatedAt: init.now,
   scenes: DEFAULT_SEQUENCE.map((type) => createSignatureScene(type, { id: type, name: SCENE_TYPE_NAMES[type] })),

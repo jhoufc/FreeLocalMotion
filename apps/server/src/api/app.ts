@@ -3,15 +3,27 @@ import fs from 'node:fs';
 import path from 'node:path';
 import express, { type NextFunction, type Request, type Response } from 'express';
 import { z } from 'zod';
-import { createProjectRequestSchema, createRenderRequestSchema, slugify } from '@lms/shared';
+import {
+  createFromTemplateRequestSchema,
+  createProjectRequestSchema,
+  createRenderRequestSchema,
+  publishRevisionRequestSchema,
+  saveTemplateRequestSchema,
+  slugify,
+  updateTemplateRequestSchema,
+} from '@lms/shared';
 import type { AnyTemplateDefinition, TemplateRegistry } from '@lms/template-sdk';
+import { starterSummaries } from '@lms/catalog/definitions';
 import { HttpError, type ProjectStore } from '../projects/store';
 import type { RenderQueue } from '../rendering/queue';
+import type { TemplateLibrary } from '../templates/library';
 
 export interface AppDeps {
   store: ProjectStore;
   queue: RenderQueue;
   templates: TemplateRegistry<AnyTemplateDefinition>;
+  /** User templates. Optional so tools that only render can omit it. */
+  library?: TemplateLibrary;
   maxUploadBytes: number;
   studioDist?: string;
 }
@@ -22,7 +34,7 @@ const param = (req: Request, key: string): string => {
   return v;
 };
 
-export const createApp = ({ store, queue, templates, maxUploadBytes, studioDist }: AppDeps) => {
+export const createApp = ({ store, queue, templates, library, maxUploadBytes, studioDist }: AppDeps) => {
   const app = express();
   app.disable('x-powered-by');
   const api = express.Router();
@@ -37,6 +49,68 @@ export const createApp = ({ store, queue, templates, maxUploadBytes, studioDist 
     res.json(templates.summaries());
   });
 
+  /** Ready-made compositions (native, read-only) built from library scenes. */
+  api.get('/starters', (_req, res) => {
+    res.json(starterSummaries());
+  });
+
+  /* ---------------- user templates ---------------- */
+  const lib = (): TemplateLibrary => {
+    if (!library) throw new HttpError(501, 'Template library not available');
+    return library;
+  };
+
+  api.get('/user-templates', async (_req, res) => {
+    res.json(await lib().list());
+  });
+
+  /** "Salvar como template": snapshot of a project (converted to a free composition). */
+  api.post('/user-templates', async (req, res) => {
+    const body = saveTemplateRequestSchema.parse(req.body);
+    res.status(201).json(await lib().createFromProject(body));
+  });
+
+  api.get('/user-templates/:id', async (req, res) => {
+    const rev = typeof req.query.revision === 'string' ? Number(req.query.revision) : undefined;
+    res.json(await lib().get(param(req, 'id'), Number.isInteger(rev) ? rev : undefined));
+  });
+
+  api.patch('/user-templates/:id', async (req, res) => {
+    res.json(await lib().update(param(req, 'id'), updateTemplateRequestSchema.parse(req.body)));
+  });
+
+  api.delete('/user-templates/:id', async (req, res) => {
+    await lib().remove(param(req, 'id'));
+    res.status(204).end();
+  });
+
+  api.post('/user-templates/:id/duplicate', async (req, res) => {
+    res.status(201).json(await lib().duplicate(param(req, 'id')));
+  });
+
+  /** New independent project from the template's current revision. */
+  api.post('/user-templates/:id/projects', async (req, res) => {
+    const body = createFromTemplateRequestSchema.parse(req.body ?? {});
+    res.status(201).json(await lib().createProject(param(req, 'id'), { ...(body.name ? { name: body.name } : {}), ...(body.format ? { format: body.format } : {}) }));
+  });
+
+  /** Working copy for editing; publishing it creates the next revision. */
+  api.post('/user-templates/:id/drafts', async (req, res) => {
+    res.status(201).json(await lib().startDraft(param(req, 'id')));
+  });
+
+  api.post('/user-templates/:id/revisions', async (req, res) => {
+    const body = publishRevisionRequestSchema.parse(req.body);
+    res.status(201).json(await lib().publish(param(req, 'id'), body.projectId));
+  });
+
+  api.get('/user-templates/:id/thumbnails/:file', (req, res, next) => {
+    res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
+    res.sendFile(lib().thumbnailPath(param(req, 'id'), param(req, 'file')), (err) => {
+      if (err) next(new HttpError(404, 'Thumbnail not found'));
+    });
+  });
+
   /* ---------------- projects ---------------- */
   api.get('/projects', async (_req, res) => {
     res.json(await store.list());
@@ -44,7 +118,9 @@ export const createApp = ({ store, queue, templates, maxUploadBytes, studioDist 
 
   api.post('/projects', async (req, res) => {
     const body = createProjectRequestSchema.parse(req.body);
-    res.status(201).json(await store.create(body.templateId, { ...(body.name ? { name: body.name } : {}), ...(body.format ? { format: body.format } : {}) }));
+    res.status(201).json(
+      await store.create(body.templateId, { ...(body.name ? { name: body.name } : {}), ...(body.format ? { format: body.format } : {}), ...(body.starterId ? { starterId: body.starterId } : {}) }),
+    );
   });
 
   api.post('/projects/import', async (req, res) => {

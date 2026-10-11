@@ -8,3 +8,5 @@ projects/*
 *.log
 .DS_Store
 coverage/
+templates/*
+!templates/.gitkeep

@@ -1,5 +1,7 @@
 # Template SDK
 
+> Tipos de cena reutilizáveis (a biblioteca global) estão documentados em [Scene SDK](scene-sdk.md).
+
 `@lms/template-sdk` define o contrato entre um template e o resto da plataforma. O editor, o servidor e o renderizador falam **apenas** com esse contrato — nenhum deles contém condicionais por `templateId`.
 
 ## Contrato
@@ -14,6 +16,8 @@ interface TemplateDefinition<P extends MotionProject> {
   formats: readonly Format[]; // 'portrait' | 'landscape'
   schema: z.ZodType<P>;       // schema COMPLETO do projeto (envelope + específicos)
   sceneTypes: readonly SceneDefinition[]; // catálogo de animações reutilizáveis (ver "Cenas")
+  mode?: 'template' | 'free';  // 'free' = composição livre (começa vazia, aceita a biblioteca inteira)
+  allowEmpty?: boolean;        // a lista de cenas pode ficar vazia
 
   createDefaults(init: ProjectInit): P;
   createScene(type: string, init: { id; name }): P['scenes'][number]; // instância nova com os padrões do tipo
@@ -48,7 +52,7 @@ Funções puras (`@lms/template-sdk`, usadas igualmente por editor, preview, per
 | `findScene`, `findSceneIndex` | localizar por id |
 | `insertScene`, `duplicateScene`, `removeScene`, `moveScene` | operações estruturais imutáveis; `duplicateScene` faz cópia profunda, novo id e nome numerado, logo após a original |
 | `renameScene`, `setSceneDuration`, `setSceneEnabled` | com as mesmas regras do schema (nome não vazio, limites do tipo, ao menos uma cena ativa) |
-| `heroFrameOf(def, duration, fps)` | frame local representativo para miniaturas |
+| `heroFrameOf(def, duration, fps, scene?)` | frame local representativo para miniaturas; com a instância, usa `heroTimeOf(scene)` quando o tipo o define |
 
 Regras do envelope para a lista (`scenesArray(schemaDaCena)`): 1 a `MAX_SCENES` (48) instâncias, ids únicos, ao menos uma habilitada.
 
@@ -58,7 +62,8 @@ Campos que todo projeto tem, para qualquer template:
 
 ```ts
 {
-  schemaVersion: 2, id, name, templateId, templateVersion,
+  schemaVersion: 3, id, name, templateId, templateVersion,
+  origin: { kind: 'template' | 'blank' | 'user-template' | 'template-draft', … },
   format: 'portrait' | 'landscape', fps: 30 | 60,
   theme: { background, foreground, accent, secondary, surface },  // hex
   audio: { assetId | null, volume, fadeIn, fadeOut },

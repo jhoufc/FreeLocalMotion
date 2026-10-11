@@ -242,6 +242,7 @@ export const Timeline = ({ project, model }: { project: MotionProject; model: Pr
             </div>
 
             <div className="tl-row scenes" onPointerDown={startScrub}>
+              {timeline.scenes.length === 0 && <div className="tl-empty">Timeline vazia — adicione cenas pela aba Cenas ou pelo preview.</div>}
               {timeline.scenes.map((s) => (
                 <div
                   key={s.id}

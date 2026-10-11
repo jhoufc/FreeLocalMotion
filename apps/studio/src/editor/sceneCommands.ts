@@ -46,8 +46,8 @@ export const isSceneCustomized = (project: MotionProject, sceneId: string): bool
 };
 
 export const sceneCommands = {
-  add(type: string, atIndex?: number) {
-    const id = useEditor.getState().addScene(type, atIndex);
+  add(type: string, atIndex?: number, opts: { keepPalette?: boolean } = {}) {
+    const id = useEditor.getState().addScene(type, atIndex, opts);
     if (id) seekToScene(id);
     return id;
   },
@@ -85,7 +85,7 @@ export const sceneCommands = {
     const project = ed.project;
     const scene = project?.scenes.find((s) => s.id === sceneId);
     if (!project || !scene) return null;
-    if (project.scenes.length <= 1) {
+    if (project.scenes.length <= 1 && !templateModules.get(project.templateId).allowEmpty) {
       ed.toast('error', 'O projeto precisa de pelo menos uma cena');
       return null;
     }

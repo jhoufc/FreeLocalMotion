@@ -18,6 +18,9 @@
     "render:samples": "tsx scripts/render-samples.ts",
     "render:stills": "tsx scripts/render-stills.ts",
     "render:composition": "tsx scripts/render-composition.ts",
+    "render:scene-stills": "tsx scripts/render-scene-stills.ts",
+    "render:free": "tsx scripts/render-free.ts",
+    "render:starters": "tsx scripts/render-starters.ts",
     "verify:videos": "tsx scripts/verify-videos.ts",
     "verify:media": "tsx scripts/verify-media.ts"
   },

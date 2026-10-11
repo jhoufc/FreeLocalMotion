@@ -148,6 +148,18 @@ importers:
 
   packages/catalog:
     dependencies:
+      '@lms/motion-core':
+        specifier: workspace:*
+        version: link:../motion-core
+      '@lms/scene-kit':
+        specifier: workspace:*
+        version: link:../scene-kit
+      '@lms/scenes-motion':
+        specifier: workspace:*
+        version: link:../scenes-motion
+      '@lms/scenes-premium':
+        specifier: workspace:*
+        version: link:../scenes-premium
       '@lms/shared':
         specifier: workspace:*
         version: link:../shared
@@ -160,6 +172,9 @@ importers:
       remotion:
         specifier: 4.0.534
         version: 4.0.534(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
+      zod:
+        specifier: ^4.1.12
+        version: 4.6.5
     devDependencies:
       '@types/react':
         specifier: ^19.1.0
@@ -180,6 +195,93 @@ importers:
         specifier: 4.0.534
         version: 4.0.534(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
     devDependencies:
+      '@types/react':
+        specifier: ^19.1.0
+        version: 19.3.0
+      react:
+        specifier: ^19.1.0
+        version: 19.3.0
+
+  packages/scene-kit:
+    dependencies:
+      '@lms/motion-core':
+        specifier: workspace:*
+        version: link:../motion-core
+      '@lms/shared':
+        specifier: workspace:*
+        version: link:../shared
+      '@lms/template-sdk':
+        specifier: workspace:*
+        version: link:../template-sdk
+      remotion:
+        specifier: 4.0.534
+        version: 4.0.534(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
+      zod:
+        specifier: ^4.1.12
+        version: 4.6.5
+    devDependencies:
+      '@types/react':
+        specifier: ^19.1.0
+        version: 19.3.0
+      react:
+        specifier: ^19.1.0
+        version: 19.3.0
+
+  packages/scenes-motion:
+    dependencies:
+      '@lms/motion-core':
+        specifier: workspace:*
+        version: link:../motion-core
+      '@lms/scene-kit':
+        specifier: workspace:*
+        version: link:../scene-kit
+      '@lms/shared':
+        specifier: workspace:*
+        version: link:../shared
+      '@lms/template-sdk':
+        specifier: workspace:*
+        version: link:../template-sdk
+      remotion:
+        specifier: 4.0.534
+        version: 4.0.534(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
+      zod:
+        specifier: ^4.1.12
+        version: 4.6.5
+    devDependencies:
+      '@lms/catalog':
+        specifier: workspace:*
+        version: link:../catalog
+      '@types/react':
+        specifier: ^19.1.0
+        version: 19.3.0
+      react:
+        specifier: ^19.1.0
+        version: 19.3.0
+
+  packages/scenes-premium:
+    dependencies:
+      '@lms/motion-core':
+        specifier: workspace:*
+        version: link:../motion-core
+      '@lms/scene-kit':
+        specifier: workspace:*
+        version: link:../scene-kit
+      '@lms/shared':
+        specifier: workspace:*
+        version: link:../shared
+      '@lms/template-sdk':
+        specifier: workspace:*
+        version: link:../template-sdk
+      remotion:
+        specifier: 4.0.534
+        version: 4.0.534(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
+      zod:
+        specifier: ^4.1.12
+        version: 4.6.5
+    devDependencies:
+      '@lms/catalog':
+        specifier: workspace:*
+        version: link:../catalog
       '@types/react':
         specifier: ^19.1.0
         version: 19.3.0
@@ -214,6 +316,9 @@ importers:
       '@lms/motion-core':
         specifier: workspace:*
         version: link:../../motion-core
+      '@lms/scene-kit':
+        specifier: workspace:*
+        version: link:../../scene-kit
       '@lms/shared':
         specifier: workspace:*
         version: link:../../shared

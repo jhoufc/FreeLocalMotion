@@ -2,6 +2,8 @@
 
 Exemplo: adicionar **"Kinetic Numbers"**. Nenhum arquivo de `apps/studio` ou `apps/server` precisa mudar.
 
+> Quer só uma animação nova, utilizável em qualquer composição livre? Crie um **tipo de cena** na biblioteca global — veja [Scene SDK](scene-sdk.md). Um template de código só é necessário para um storyboard com camada própria (HUD, transições específicas). Usuários também podem salvar qualquer composição como template pela interface, sem código.
+
 ## 1. Pacote
 
 ```

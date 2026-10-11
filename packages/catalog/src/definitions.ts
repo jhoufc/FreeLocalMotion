@@ -1,5 +1,9 @@
 import { createTemplateRegistry, type AnyTemplateDefinition } from '@lms/template-sdk';
 import { signatureDefinition } from '@lms/template-signature-001/definition';
+import { compositionDefinition } from './composition/definition';
+
+export { sceneDefinitions } from './scenes';
+export { COMPOSITION_TEMPLATE_ID, compositionDefinition, toComposition, type CompositionProject } from './composition/definition';
 
 /**
  * Data-only registry (schemas, defaults, fields, timeline). Safe for Node: no React
@@ -10,4 +14,6 @@ import { signatureDefinition } from '@lms/template-signature-001/definition';
  */
 export const templateDefinitions = createTemplateRegistry<AnyTemplateDefinition>([
   signatureDefinition as unknown as AnyTemplateDefinition,
+  compositionDefinition as unknown as AnyTemplateDefinition,
 ]);
+export { STARTERS, buildStarter, findStarter, starterSummaries } from './starters';

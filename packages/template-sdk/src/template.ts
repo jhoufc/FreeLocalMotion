@@ -39,6 +39,13 @@ export interface TemplateDefinition<P extends MotionProject = MotionProject> {
   readonly description: string;
   readonly tags: readonly string[];
   readonly formats: readonly Format[];
+  /**
+   * `template` (default): a designed storyboard the user customizes.
+   * `free`: the free-composition engine — starts empty, accepts every registered scene type.
+   */
+  readonly mode?: 'template' | 'free';
+  /** The scene list may be empty (free compositions). Rendering still requires ≥ 1 enabled scene. */
+  readonly allowEmpty?: boolean;
   /** Full schema for this template's projects (envelope + template specifics). */
   readonly schema: z.ZodType<P>;
 

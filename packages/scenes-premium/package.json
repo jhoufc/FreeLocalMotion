@@ -1,0 +1,30 @@
+{
+  "name": "@lms/scenes-premium",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Studio Premium scene pack: eight reusable scene types for free compositions.",
+  "exports": {
+    ".": "./src/index.ts",
+    "./definitions": "./src/definitions.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc -p tsconfig.json"
+  },
+  "dependencies": {
+    "@lms/motion-core": "workspace:*",
+    "@lms/scene-kit": "workspace:*",
+    "@lms/shared": "workspace:*",
+    "@lms/template-sdk": "workspace:*",
+    "remotion": "4.0.534",
+    "zod": "^4.1.12"
+  },
+  "peerDependencies": {
+    "react": ">=18"
+  },
+  "devDependencies": {
+    "@types/react": "^19.1.0",
+    "react": "^19.1.0",
+    "@lms/catalog": "workspace:*"
+  }
+}

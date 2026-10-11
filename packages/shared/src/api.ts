@@ -1,8 +1,21 @@
 import { z } from 'zod';
 import type { Format } from './formats';
-import { formatSchema } from './schema/project';
+import { formatSchema, type ProjectOrigin } from './schema/project';
 
 /** Contracts shared by the local server and the studio client. */
+
+/** Scene library categories (also used to classify user templates). */
+export const SCENE_CATEGORIES = ['typography', 'technology', 'product', 'data', 'abstract', 'editorial', 'signature'] as const;
+export type SceneCategory = (typeof SCENE_CATEGORIES)[number];
+export const SCENE_CATEGORY_LABELS: Record<SceneCategory, string> = {
+  typography: 'Typography',
+  technology: 'Technology',
+  product: 'Product',
+  data: 'Data',
+  abstract: 'Abstract',
+  editorial: 'Editorial',
+  signature: 'Signature',
+};
 
 export interface TemplateSummary {
   id: string;
@@ -12,6 +25,8 @@ export interface TemplateSummary {
   tags: string[];
   durationSeconds: number;
   formats: Format[];
+  /** `free`: the blank free-composition engine (not a fixed storyboard). */
+  mode: 'template' | 'free';
 }
 
 export interface ProjectSummary {
@@ -19,12 +34,77 @@ export interface ProjectSummary {
   name: string;
   templateId: string;
   format: Format;
+  origin: ProjectOrigin | null;
+  sceneCount: number;
   updatedAt: string;
   createdAt: string;
 }
 
+export interface StarterSummary {
+  id: string;
+  name: string;
+  description: string;
+  category: SceneCategory;
+  sceneCount: number;
+  durationSeconds: number;
+}
+
+/* ---------------- user templates ---------------- */
+
+export const userTemplateIdSchema = z.string().regex(/^t-[a-z0-9]{6,32}$/);
+
+export interface UserTemplateRevision {
+  revision: number;
+  createdAt: string;
+  sceneCount: number;
+  durationSeconds: number;
+  /** Thumbnail file name (inside the template folder) once generated. */
+  thumbnail: string | null;
+}
+
+export interface UserTemplateSummary {
+  id: string;
+  name: string;
+  description: string;
+  category: SceneCategory;
+  /** Current (latest published) revision. */
+  revision: number;
+  revisions: UserTemplateRevision[];
+  format: Format;
+  sceneCount: number;
+  durationSeconds: number;
+  thumbnail: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export const saveTemplateRequestSchema = z.object({
+  projectId: z.string().min(1),
+  name: z.string().trim().min(1).max(80),
+  description: z.string().max(280).default(''),
+  category: z.enum(SCENE_CATEGORIES),
+});
+export type SaveTemplateRequest = z.input<typeof saveTemplateRequestSchema>;
+
+export const updateTemplateRequestSchema = z.object({
+  name: z.string().trim().min(1).max(80).optional(),
+  description: z.string().max(280).optional(),
+  category: z.enum(SCENE_CATEGORIES).optional(),
+});
+export type UpdateTemplateRequest = z.infer<typeof updateTemplateRequestSchema>;
+
+export const createFromTemplateRequestSchema = z.object({
+  name: z.string().trim().min(1).max(80).optional(),
+  format: formatSchema.optional(),
+});
+export type CreateFromTemplateRequest = z.infer<typeof createFromTemplateRequestSchema>;
+
+export const publishRevisionRequestSchema = z.object({ projectId: z.string().min(1) });
+
 export const createProjectRequestSchema = z.object({
   templateId: z.string().min(1),
+  /** Start from a ready-made composition (free-composition template only). */
+  starterId: z.string().regex(/^[a-z0-9-]+$/).optional(),
   name: z.string().min(1).max(80).optional(),
   format: formatSchema.optional(),
 });

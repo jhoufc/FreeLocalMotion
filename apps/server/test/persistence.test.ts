@@ -60,12 +60,14 @@ describe('ProjectStore', () => {
       ...structuredClone(current),
       schemaVersion: 1,
       templateVersion: '1.0.0',
+      origin: undefined,
       scenes: current.scenes.map(({ type: _t, enabled: _e, ...rest }) => ({ ...rest, name: rest.id === 'energy' ? 'Benefício' : rest.name })),
     };
     await fs.mkdir(path.join(dir, id), { recursive: true });
     await fs.writeFile(path.join(dir, id, 'project.json'), JSON.stringify(legacy));
     const opened = await store.get(id);
-    expect(opened.schemaVersion).toBe(2);
+    expect(opened.schemaVersion).toBe(3);
+    expect(opened.origin).toEqual({ kind: 'template', templateId: 'signature-001', version: '1.0.0' });
     expect(opened.scenes.map((s) => [s.id, s.type, s.name])).toEqual([
       ['impact', 'impact', 'Impact'],
       ['energy', 'energy', 'Benefício'],
@@ -74,8 +76,8 @@ describe('ProjectStore', () => {
     ]);
     const files = await fs.readdir(path.join(dir, id));
     expect(files).toContain('project.backup-v1-1.0.0.json');
-    expect(JSON.parse(await fs.readFile(path.join(dir, id, 'project.backup-v1-1.0.0.json'), 'utf8'))).toEqual(legacy);
-    expect(JSON.parse(await fs.readFile(path.join(dir, id, 'project.json'), 'utf8')).schemaVersion).toBe(2);
+    expect(JSON.parse(await fs.readFile(path.join(dir, id, 'project.backup-v1-1.0.0.json'), 'utf8'))).toEqual(JSON.parse(JSON.stringify(legacy)));
+    expect(JSON.parse(await fs.readFile(path.join(dir, id, 'project.json'), 'utf8')).schemaVersion).toBe(3);
     expect((await store.list()).map((p) => p.id)).toContain(id);
   });
 

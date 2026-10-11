@@ -26,6 +26,14 @@ const migrations: Record<number, Migration> = {
         })
       : p.scenes,
   }),
+  /**
+   * v2 -> v3: every v2 project was created from a native template; record it as origin.
+   */
+  2: (p) => ({
+    ...p,
+    schemaVersion: 3,
+    origin: { kind: 'template', templateId: String(p.templateId ?? 'unknown'), version: String(p.templateVersion ?? '0.0.0') },
+  }),
 };
 
 export class MigrationError extends Error {}

@@ -85,12 +85,21 @@ for (const file of files) {
   // Representative frames: the settled moment of each scene plus each transition midpoint.
   const ranges = computeSceneRanges(defaults.scenes, meta.fps);
   const sceneLabel = (i: number) => `${defaults.scenes[i]!.name} [${defaults.scenes[i]!.type}]`;
-  const picks = [
+  // Templates with designed transitions (Signature / 001) must show the bright wipe right
+  // after each cut. Free compositions cut directly and scenes may open from darkness, so
+  // their start/end frames are sampled for the contact sheet and reported, not judged.
+  const free = template.mode === 'free';
+  const picks: { frame: number; label: string; judged: boolean }[] = [
     ...ranges.map((r) => {
       const scene = defaults.scenes[r.index]!;
-      return { frame: r.from + heroFrameOf(sceneTypeOf(template, scene.type), scene.duration, meta.fps), label: `${sceneLabel(r.index)} (settled)` };
+      return { frame: r.from + heroFrameOf(sceneTypeOf(template, scene.type), scene.duration, meta.fps, scene), label: `${sceneLabel(r.index)} (settled)`, judged: true };
     }),
-    ...ranges.slice(1).map((r) => ({ frame: r.from + 4, label: `${sceneLabel(r.index)} (transition in)` })),
+    ...(free
+      ? ranges.flatMap((r) => [
+          { frame: r.from + 4, label: `${sceneLabel(r.index)} (start)`, judged: false },
+          { frame: r.from + r.durationInFrames - 6, label: `${sceneLabel(r.index)} (end)`, judged: false },
+        ])
+      : ranges.slice(1).map((r) => ({ frame: r.from + 4, label: `${sceneLabel(r.index)} (transition in)`, judged: true }))),
   ].sort((a, b) => a.frame - b.frame);
   const select = picks.map((p) => `eq(n\\,${p.frame})`).join('+');
   const stats = execFileSync(
@@ -101,14 +110,16 @@ for (const file of files) {
   const yavg = [...stats.matchAll(/lavfi\.signalstats\.YAVG=([\d.]+)/g)].map((m) => Number(m[1]));
   const ymax = [...stats.matchAll(/lavfi\.signalstats\.YMAX=([\d.]+)/g)].map((m) => Number(m[1]));
   picks.forEach((p, i) => {
-    check((ymax[i] ?? 0) > 140 && (yavg[i] ?? 0) > 12, `frame ${p.frame}`, `${p.label}: Ymax ${ymax[i]} Yavg ${yavg[i]?.toFixed(1)}`);
+    const detail = `${p.label}: Ymax ${ymax[i]} Yavg ${yavg[i]?.toFixed(1)}`;
+    if (p.judged) check((ymax[i] ?? 0) > 140 && (yavg[i] ?? 0) > 12, `frame ${p.frame}`, detail);
+    else console.log(`  · ${`frame ${p.frame}`.padEnd(26)} ${detail}`);
   });
   const distinct = new Set(yavg.map((y) => y.toFixed(2))).size;
   check(distinct >= Math.min(yavg.length, 5), 'frames differ', `${distinct}/${yavg.length} distinct luma averages`);
 
   const sheet = file.replace(/\.mp4$/, '.sheet.jpg');
-  const cols = format === 'portrait' ? 7 : 4;
-  const w = format === 'portrait' ? 270 : 480;
+  const cols = free ? 6 : format === 'portrait' ? 7 : 4;
+  const w = free ? (format === 'portrait' ? 180 : 320) : format === 'portrait' ? 270 : 480;
   execFileSync('ffmpeg', ['-v', 'error', '-y', '-i', file, '-vf', `select='${select}',scale=${w}:-2,tile=${cols}x${Math.ceil(picks.length / cols)}:padding=6:color=0x202020`, '-vsync', '0', '-frames:v', '1', sheet]);
   console.log(`    contact sheet: ${path.relative(root, sheet)}`);
 }

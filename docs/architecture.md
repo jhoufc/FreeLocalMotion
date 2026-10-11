@@ -13,7 +13,9 @@
                                         ▼                                               ▼
                          @lms/catalog: TemplateStage  ◀── mesmo componente, mesmos dados ──  Remotion Root (Composition)
                                         │
-                         template module (Signature / 001) ── @lms/motion-core ── @lms/template-sdk ── @lms/shared
+             templates: Signature / 001 · Composição livre ──▶ biblioteca global de cenas (sceneModules)
+                                        │                         Signature / 001 (4) + Studio Premium (8)
+                         @lms/scene-kit ── @lms/motion-core ── @lms/template-sdk ── @lms/shared
 ```
 
 O ponto central é **`TemplateStage`** (`packages/catalog/src/Stage.tsx`): é o único componente montado tanto pelo `@remotion/player` no Studio quanto pela `<Composition>` que o servidor renderiza. Ele recebe `{ project, assetBaseUrl }`, resolve o template pelo `templateId` no registry e fornece um `AssetResolver`. Não há uma "versão de preview" da animação — é o mesmo código, os mesmos dados e as mesmas fontes.
@@ -25,9 +27,12 @@ O ponto central é **`TemplateStage`** (`packages/catalog/src/Stage.tsx`): é o 
 | `@lms/shared` | Envelope do projeto (Zod), elementos reutilizáveis (texto, gráfico, background, layout por formato), cores/tokens, formatos e áreas seguras, contratos da API, migrações, acesso por path | zod |
 | `@lms/motion-core` | Motor de animação: spring analítico, easing, `tween/keyframes/envelope`, PRNG/ruído com seed, `stagger`, `useTime`, carregamento de fontes com `delayRender`, medição e auto-fit de texto, `MaskReveal`, `DirectionalBlur`, `KineticText`, `Grain`, projeção 2.5D, layout responsivo | remotion, shared |
 | `@lms/template-sdk` | Contrato `TemplateDefinition`/`TemplateModule`, descritores de campos editáveis, modelo de timeline, `createTemplateRegistry`, validação completa (`parseProjectForTemplate`), `AssetProvider` | shared |
-| `@lms/template-signature-001` | Schema, defaults, tabela de coreografia, definição (campos + timeline) e composição das 4 cenas | motion-core, sdk, shared |
-| `@lms/catalog` | Registry concreto: `definitions` (só dados, seguro em Node) e `modules` (com React), `TemplateStage`, entry `registerRoot` | templates |
-| `apps/server` | Express 5, `ProjectStore`, `RenderQueue`, `RemotionEngine` | catalog/definitions |
+| `@lms/scene-kit` | Toolkit compartilhado das cenas: fontes OFL, layout de texto, backgrounds, trilha/acabamento, builders de campos e camadas (`/fields`, só dados) | motion-core, sdk, shared |
+| `@lms/template-signature-001` | Storyboard Signature / 001 e suas 4 cenas como tipos globais (schema, defaults, coreografia, views) | scene-kit, motion-core, sdk |
+| `@lms/scenes-premium` | Família Studio Premium: 8 tipos de cena (`/definitions` só dados + views) | scene-kit, motion-core, sdk |
+| `@lms/scenes-motion` | Família Studio Motion: 12 tipos de cena (apps, produtos, dados, branding, tipografia cinética) | scene-kit, motion-core, sdk |
+| `@lms/catalog` | Registries concretos: templates (`definitions`/`modules`), **biblioteca global de cenas** (`sceneDefinitions`/`sceneModules`), template **Composição livre**, `TemplateStage`, entry `registerRoot` | templates, cenas |
+| `apps/server` | Express 5, `ProjectStore`, `TemplateLibrary` (templates do usuário), `RenderQueue`, `RemotionEngine` | catalog/definitions |
 | `apps/studio` | Editor | catalog, player |
 
 ### Separação dados × composição
@@ -55,6 +60,37 @@ Um template oferece **tipos de cena** (`sceneTypes`: Impact, Energy, Transformat
 - **Duração**: cada tipo declara limites e uma estratégia (`hold`: entradas fixas, saída ancorada ao fim, a sobra vira sustentação; `proportional`: relógio normalizado dentro de limites estreitos; `fixed`). O inspector mostra a regra junto do controle.
 - **Editor**: operações estruturais (adicionar, duplicar, excluir, mover, renomear, ativar/desativar, duração) são funções puras do SDK aplicadas pelo store, validadas pelo schema e registradas no mesmo histórico de desfazer/refazer (`Ctrl+Z`, `Ctrl+Shift+Z`; `Ctrl+D` duplica; `Delete` exclui a cena selecionada — atalhos ignorados enquanto se digita). Excluir uma cena com conteúdo personalizado pede confirmação; cenas intactas saem direto (desfazer as recupera).
 - **Targets**: ids `<instância>.<elemento>`, então seleção no canvas, inspector e timeline apontam para a ocorrência certa mesmo com a mesma animação repetida.
+
+## Modo Template × Modo Livre
+
+- **Modo Template**: projeto criado de um template nativo (Signature / 001) ou de um template do usuário — começa com um storyboard pronto.
+- **Modo Livre**: "Nova criação → Composição livre" cria um projeto do template nativo `composition` (`mode: 'free'`, `allowEmpty`): timeline vazia, 30 fps, 9:16 por padrão. O schema dele é a união discriminada (`type`) de **todos** os tipos da biblioteca global, então cenas de famílias diferentes convivem e cada instância continua validada pelo schema do seu tipo.
+
+Os dois modos usam o mesmo editor, a mesma timeline, o mesmo inspector genérico, a mesma persistência e o mesmo pipeline de render — a composição livre é apenas mais um template registrado. Cenas trocam por corte seco (sem sobreposição de frames: duração = soma das cenas habilitadas). O render recusa um vídeo sem cenas ativas.
+
+### Estilo global (composição livre)
+
+`theme` é a paleta da composição; `globals.style` guarda a tipografia base (família de títulos usada pelas cenas Premium) e o background padrão; `globals.grain`/`vignette` o acabamento. Cenas herdam a paleta por tokens e o background quando estão em `inherit`; overrides por cena (paleta, background) preservam identidades. Na biblioteca, “Original da cena” adiciona uma cena já com a paleta com que ela foi desenhada. Sem configuração, cada cena mantém seu comportamento original.
+
+## Composições prontas
+
+`packages/catalog/src/starters.ts` define cinco composições nativas (App Launch Cinematic, Motion Design Showreel, Digital Product Promo, Product Commercial, Creator Intro). Cada uma é apenas uma lista de **instâncias** de cenas da biblioteca com textos, dados e tema próprios — nada pré-renderizado. `POST /api/projects { templateId: 'composition', starterId }` cria uma composição livre comum (`origin: { kind: 'template', templateId: 'starter:<id>' }`), que pode ser editada, recomposta com cenas de outras composições e salva como template do usuário. As composições ficam protegidas (código) e aparecem na aba Templates com preview ao vivo.
+
+## Templates do usuário
+
+`TemplateLibrary` (`apps/server/src/templates/library.ts`) guarda em `templates/<id>/`:
+
+```
+template.json            nome, descrição, categoria, revisão atual e histórico
+revisions/r<n>.json      snapshot imutável da composição de cada revisão
+assets/<arquivo>         cópias de todo asset referenciado por qualquer revisão
+thumb-r<n>.jpg           frame representativo (renderStill do mesmo bundle)
+```
+
+- **Salvar como template**: valida (≥ 1 cena ativa, todos os tipos na biblioteca), converte para composição livre se veio de um template nativo (`toComposition`), copia só os assets usados e renderiza a miniatura.
+- **Criar projeto**: cópia independente da revisão atual (novo id, assets copiados para o projeto, `origin: user-template`). Excluir o template não afeta projetos; excluir o projeto de origem não afeta o template.
+- **Editar**: cria um rascunho (`origin: template-draft`); "Publicar revisão" grava `r<n+1>` explicitamente. Revisões antigas e projetos criados a partir delas não mudam.
+- Templates nativos ficam em código e não podem ser excluídos pela interface.
 
 ## Seleção no canvas
 

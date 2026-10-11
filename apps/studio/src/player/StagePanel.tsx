@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type MouseEvent } from 'react';
 import { Player, type PlayerRef } from '@remotion/player';
-import { Loader2, Maximize, ScanLine, Smartphone, Monitor } from 'lucide-react';
+import { AddSceneDialog } from '../components/AddSceneDialog';
+import { Loader2, Maximize, Monitor, Plus, ScanLine, Smartphone } from 'lucide-react';
 import { SAFE_AREAS, type MotionProject } from '@lms/shared';
 import { TemplateStage, type StageProps } from '@lms/catalog';
 import { useEditor } from '../stores/editor';
@@ -21,6 +22,7 @@ export const StagePanel = ({ project, model }: { project: MotionProject; model: 
   const update = useEditor((s) => s.update);
   const { zoom, setZoom, loop, showSafeArea, toggleSafeArea, buffering } = usePlayback();
   const [hovered, setHovered] = useState<string | null>(null);
+  const [adding, setAdding] = useState(false);
   const [fontsLoading, setFontsLoading] = useState(() => document.fonts.status === 'loading');
 
   const { width: W, height: H, fps, durationInFrames } = model;
@@ -178,6 +180,17 @@ export const StagePanel = ({ project, model }: { project: MotionProject; model: 
             )}
             acknowledgeRemotionLicense
           />
+          {model.ranges.length === 0 && (
+            <div className="stage-empty">
+              <div>
+                <b>{project.scenes.length ? 'Nenhuma cena ativa' : 'Composição vazia'}</b>
+                <span>{project.scenes.length ? 'Inclua uma cena no vídeo ou adicione uma nova da biblioteca.' : 'Escolha cenas na biblioteca para montar o vídeo. A duração acompanha as cenas adicionadas.'}</span>
+                <button className="btn primary" onClick={() => setAdding(true)}>
+                  <Plus size={14} /> {project.scenes.length ? 'Adicionar cena' : 'Adicionar primeira cena'}
+                </button>
+              </div>
+            </div>
+          )}
           {showSafeArea && (
             <>
               <div
@@ -193,6 +206,7 @@ export const StagePanel = ({ project, model }: { project: MotionProject; model: 
       </div>
 
       <Transport fps={fps} durationInFrames={durationInFrames} ranges={model.ranges} sceneNames={project.scenes.map((s) => s.name)} />
+      {adding && <AddSceneDialog project={project} atIndex={project.scenes.length} onClose={() => setAdding(false)} />}
     </div>
   );
 };
