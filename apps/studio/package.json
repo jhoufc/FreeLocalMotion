@@ -21,7 +21,8 @@
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
     "remotion": "4.0.534",
-    "zustand": "^5.0.8"
+    "zustand": "^5.0.8",
+    "@lms/speech": "workspace:*"
   },
   "devDependencies": {
     "@types/react": "^19.1.0",

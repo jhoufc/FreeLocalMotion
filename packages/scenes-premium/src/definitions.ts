@@ -1,3 +1,4 @@
+import { PREMIUM_PLANNING } from './planning';
 import { asAnySceneType, type AnySceneTypeDefinition } from '@lms/template-sdk';
 import { glassPanelsType } from './scenes/glassPanels';
 import { kineticTypeType } from './scenes/kineticType';
@@ -18,4 +19,14 @@ export { PREMIUM_FAMILY } from './family';
 export { numberImpactType, glassPanelsType, kineticTypeType };
 
 /** Data side of the premium scene pack (Node-safe: no React, no fonts), in library order. */
-export const PREMIUM_SCENE_TYPES: readonly AnySceneTypeDefinition[] = [asAnySceneType(kineticTypeType), asAnySceneType(glassPanelsType), asAnySceneType(numberImpactType), asAnySceneType(orbitalDataType), asAnySceneType(productRevealType), asAnySceneType(gridBreakdownType), asAnySceneType(editorialSplitType), asAnySceneType(cinematicOutroType)];
+export const PREMIUM_SCENE_TYPES: readonly AnySceneTypeDefinition[] = [
+  kineticTypeType,
+  glassPanelsType,
+  numberImpactType,
+  orbitalDataType,
+  productRevealType,
+  gridBreakdownType,
+  editorialSplitType,
+  cinematicOutroType,
+].map((t) => ({ ...asAnySceneType(t as never), planning: PREMIUM_PLANNING[t.id] }));
+export { PREMIUM_PLANNING };

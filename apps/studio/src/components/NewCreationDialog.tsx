@@ -1,10 +1,11 @@
 import { useState } from 'react';
-import { LayoutTemplate, Monitor, Smartphone, Sparkles } from 'lucide-react';
+import { AudioLines, LayoutTemplate, Monitor, Smartphone, Sparkles } from 'lucide-react';
 import type { Format } from '@lms/shared';
 import { useEditor } from '../stores/editor';
 import { Dialog } from './ui';
+import { SpeechDialog } from './SpeechDialog';
 
-type Mode = 'free' | 'template';
+type Mode = 'free' | 'template' | 'speech';
 /** `native:<id>` or `user:<id>`. */
 type Source = string;
 
@@ -24,6 +25,8 @@ export const NewCreationDialog = ({ onClose, initial }: { onClose: () => void; i
   const [name, setName] = useState('');
   const [format, setFormat] = useState<Format>(initial?.mode === 'template' ? 'landscape' : 'portrait');
   const [busy, setBusy] = useState(false);
+
+  if (mode === 'speech') return <SpeechDialog onClose={onClose} />;
 
   const submit = async () => {
     setBusy(true);
@@ -61,6 +64,11 @@ export const NewCreationDialog = ({ onClose, initial }: { onClose: () => void; i
           <LayoutTemplate size={18} />
           <b>A partir de um template</b>
           <span>Comece de um storyboard pronto — nativo ou salvo por você.</span>
+        </button>
+        <button className="mode-card" onClick={() => setMode('speech')} disabled={!free}>
+          <AudioLines size={18} />
+          <b>A partir da fala</b>
+          <span>Envie o áudio/vídeo ou a transcrição: as cenas seguem o que você diz.</span>
         </button>
       </div>
 

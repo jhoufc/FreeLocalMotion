@@ -9,7 +9,7 @@ export type RevealPreset = (typeof REVEAL_PRESETS)[number];
 export const irisRevealSchema = z.object({
   ...sceneBaseShape,
   type: z.literal('iris-reveal'),
-  duration: z.number().min(3).max(7),
+  duration: z.number().min(3).max(9),
   texts: z.object({ cover: textElementSchema, headline: textElementSchema, sub: textElementSchema }),
   elements: z.object({ curtain: graphicElementSchema, edge: graphicElementSchema, content: graphicElementSchema }),
   animation: animationSchema,
@@ -41,7 +41,7 @@ export const irisRevealType = motionSceneType<IrisRevealScene>({
   description: 'Revelação por máscaras animadas: íris, wipe diagonal, explosão radial, forma líquida ou abertura geométrica.',
   category: 'abstract',
   heroTime: 2.8,
-  duration: { default: 4, min: 3, max: 7 },
+  duration: { default: 4, min: 3, max: 9 },
   schema: irisRevealSchema,
   palette: { background: '#0A0A0E', foreground: '#FFFFFF', accent: '#FF6A3D', secondary: '#3C2BFF', surface: '#18161F' },
   create: (init) => ({

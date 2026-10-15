@@ -8,7 +8,7 @@ export const KINETIC_DIRECTIONS = ['right', 'left', 'up', 'down'] as const;
 export const kineticTypeSchema = z.object({
   ...sceneBaseShape,
   type: z.literal('kinetic-type'),
-  duration: z.number().min(3).max(6),
+  duration: z.number().min(3).max(8),
   texts: z.object({ tag: textElementSchema, headline: textElementSchema, sub: textElementSchema }),
   elements: z.object({
     blocks: graphicElementSchema,
@@ -44,7 +44,7 @@ export const kineticTypeType = premiumSceneType<KineticTypeScene>({
   description: 'Tipografia gigante construída por blocos: máscaras direcionais, stagger por caractere e faixas cinéticas ao fundo.',
   category: 'typography',
   heroTime: 2.3,
-  duration: { default: 4, min: 3, max: 6 },
+  duration: { default: 4, min: 3, max: 8 },
   schema: kineticTypeSchema,
   palette: { background: '#0A0A0F', foreground: '#F6F4EF', accent: '#FF4D2E', secondary: '#3B3BFF', surface: '#17171F' },
   create: (init) => ({

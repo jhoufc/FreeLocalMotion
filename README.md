@@ -48,6 +48,7 @@ Variáveis opcionais: `LMS_PORT`, `LMS_HOST`, `LMS_PROJECTS_DIR`, `LMS_EXPORTS_D
 | Abrir / duplicar / excluir | Aba **Projetos** |
 | Nova criação | **Projeto → Nova criação…** ou aba **Templates**: *Composição livre* (timeline vazia, 9:16, 30 fps) ou *A partir de um template* (nativo ou seu) |
 | Biblioteca de cenas | **+ Adicionar cena**: 24 cenas de 3 famílias (Signature / 001, Studio Premium, Studio Motion) com busca, categorias, miniaturas reais e preview ao passar o mouse |
+| A partir da fala | **Nova criação → A partir da fala**: envie o áudio/vídeo (transcrição local com faster-whisper) ou a transcrição; cada ideia vira a cena que a conta, com motivo, alternativas e a sua voz como trilha — veja [docs/speech-planner.md](docs/speech-planner.md) |
 | Composições prontas | Aba **Templates → Composições prontas** (App Launch, Showreel, Digital Product, Product Commercial, Creator Intro): cria um projeto livre totalmente editável |
 | Salvar como template | **Projeto → Salvar como template…** (nome, descrição, categoria). Aba **Templates → Meus templates**: criar projeto, editar (publica nova revisão), renomear, duplicar, excluir |
 | Compor cenas | Aba **Cenas**: menu ⋯ de cada cena (renomear, duplicar, mover, ocultar do vídeo, excluir), arraste pela alça ⋮⋮ para reordenar, **+ Adicionar cena** no fim ou no **+** entre cenas. Cada ocorrência é independente; a animação é a mesma do tipo |
@@ -89,6 +90,8 @@ pnpm render:stills    # PNGs de frames específicos (QA visual): pnpm render:sti
 pnpm render:composition  # MP4s de um projeto com cenas repetidas/movidas/desabilitadas; verifique com verify:videos
 pnpm render:free         # composição livre com cenas novas + Signature nos dois formatos, salva como template e checa assets
 pnpm render:starters     # as cinco composições prontas nos dois formatos (com sidecar para verify:videos)
+pnpm plan:speech fala.txt   # plano de cenas a partir de uma transcrição, com motivos e nota
+pnpm render:speech fala.mp4 # áudio/vídeo → transcrição local → plano → MP4 nos dois formatos
 pnpm render:scene-stills # QA visual de cada tipo de cena: início/meio/fim nos dois formatos (pnpm render:scene-stills --premium)
 ```
 
@@ -106,6 +109,7 @@ packages/
   scene-kit/       toolkit das cenas: fontes OFL, texto, backgrounds, builders de campos/camadas
   scenes-premium/  família Studio Premium (8 tipos de cena)
   scenes-motion/   família Studio Motion (12 tipos de cena)
+  speech/          planejador pela fala (transcrição → ideias → cenas; sem I/O)
   templates/
     signature-001/ o primeiro template e suas 4 cenas (tipos globais)
   catalog/         registries (templates + biblioteca global de cenas), composição livre, TemplateStage, entry do Remotion

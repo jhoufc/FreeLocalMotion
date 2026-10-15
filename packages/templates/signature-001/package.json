@@ -7,15 +7,23 @@
     ".": "./src/index.ts",
     "./definition": "./src/definition.ts"
   },
-  "scripts": { "typecheck": "tsc -p tsconfig.json" },
+  "scripts": {
+    "typecheck": "tsc -p tsconfig.json"
+  },
   "dependencies": {
     "@lms/motion-core": "workspace:*",
     "@lms/scene-kit": "workspace:*",
     "@lms/shared": "workspace:*",
     "@lms/template-sdk": "workspace:*",
     "remotion": "4.0.534",
-    "zod": "^4.1.12"
+    "zod": "^4.1.12",
+    "@lms/speech": "workspace:*"
   },
-  "peerDependencies": { "react": ">=18" },
-  "devDependencies": { "@types/react": "^19.1.0", "react": "^19.1.0" }
+  "peerDependencies": {
+    "react": ">=18"
+  },
+  "devDependencies": {
+    "@types/react": "^19.1.0",
+    "react": "^19.1.0"
+  }
 }

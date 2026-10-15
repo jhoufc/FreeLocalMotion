@@ -10,3 +10,6 @@ projects/*
 coverage/
 templates/*
 !templates/.gitkeep
+speech/*
+!speech/.gitkeep
+__pycache__/

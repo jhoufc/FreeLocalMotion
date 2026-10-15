@@ -31,6 +31,7 @@ O ponto central é **`TemplateStage`** (`packages/catalog/src/Stage.tsx`): é o 
 | `@lms/template-signature-001` | Storyboard Signature / 001 e suas 4 cenas como tipos globais (schema, defaults, coreografia, views) | scene-kit, motion-core, sdk |
 | `@lms/scenes-premium` | Família Studio Premium: 8 tipos de cena (`/definitions` só dados + views) | scene-kit, motion-core, sdk |
 | `@lms/scenes-motion` | Família Studio Motion: 12 tipos de cena (apps, produtos, dados, branding, tipografia cinética) | scene-kit, motion-core, sdk |
+| `@lms/speech` | Planejador pela fala: transcrições, ideias, análise, seleção de cenas pelas fichas, avaliação ([speech-planner.md](speech-planner.md)) | — |
 | `@lms/catalog` | Registries concretos: templates (`definitions`/`modules`), **biblioteca global de cenas** (`sceneDefinitions`/`sceneModules`), template **Composição livre**, `TemplateStage`, entry `registerRoot` | templates, cenas |
 | `apps/server` | Express 5, `ProjectStore`, `TemplateLibrary` (templates do usuário), `RenderQueue`, `RemotionEngine` | catalog/definitions |
 | `apps/studio` | Editor | catalog, player |
@@ -71,6 +72,10 @@ Os dois modos usam o mesmo editor, a mesma timeline, o mesmo inspector genérico
 ### Estilo global (composição livre)
 
 `theme` é a paleta da composição; `globals.style` guarda a tipografia base (família de títulos usada pelas cenas Premium) e o background padrão; `globals.grain`/`vignette` o acabamento. Cenas herdam a paleta por tokens e o background quando estão em `inherit`; overrides por cena (paleta, background) preservam identidades. Na biblioteca, “Original da cena” adiciona uma cena já com a paleta com que ela foi desenhada. Sem configuração, cada cena mantém seu comportamento original.
+
+## Fala → composição
+
+`POST /api/speech/uploads` (áudio/vídeo → ffmpeg), `POST /api/speech/uploads/:id/transcribe` (faster-whisper local, job com progresso), `POST /api/speech/plan` (prévia) e `POST /api/projects { speech }` criam uma composição livre planejada pela fala, com a voz como trilha e o plano em `projects/<id>/speech.json` (`GET /api/projects/:id/speech`). Detalhes em [speech-planner.md](speech-planner.md).
 
 ## Composições prontas
 

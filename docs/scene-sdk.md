@@ -120,6 +120,10 @@ pnpm render:scene-stills minha-cena        # início, entrada, meio, hero, saíd
 
 A cena aparece automaticamente na Biblioteca de cenas da composição livre (busca, categoria, família, miniatura real), no inspector genérico e na timeline.
 
+## Ficha de planejamento (fala)
+
+Toda cena da biblioteca declara `planning`: papel, seções do roteiro, energia, dados que precisa, família visual, combinações e `fill(ctx)`, que monta o conteúdo da cena a partir da fala (ou devolve `null`). O planejador escolhe a cena de cada ideia com essas fichas. Veja [speech-planner.md](speech-planner.md).
+
 ## Campos disponíveis
 
 `text` (input/textarea), `number` (slider + campo), `color` (tokens ou hex), `optional-color` (herdar × personalizar), `toggle`, `select` (dropdown/segmented), `asset` (imagem/áudio com upload), `background` (procedural, sólida, gradiente, imagem e — em composições livres — `inherit`), `line-breaks` por formato e `list` (grupo repetível com `min`/`max`, mover, remover e adicionar). Os limites de todo descritor precisam estar contidos no schema — há teste para isso.

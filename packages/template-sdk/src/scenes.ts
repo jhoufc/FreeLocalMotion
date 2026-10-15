@@ -1,3 +1,4 @@
+import type { ScenePlanning } from '@lms/speech';
 import { MAX_SCENES, createId, secondsToFrames, type MotionProject, type MotionSceneBase, type SceneCategory } from '@lms/shared';
 
 /* ------------------------------------------------------------------ */
@@ -52,6 +53,11 @@ export interface SceneDefinition {
    * on their data (e.g. word slots that shrink with the word count). Receives the instance.
    */
   heroTimeOf?: (scene: unknown) => number;
+  /**
+   * Planning card: when the scene fits a video and how to fill it from speech (the
+   * speech planner of `@lms/speech`). Every scene of the global library declares one.
+   */
+  planning?: ScenePlanning;
 }
 
 export const isDurationEditable = (def: Pick<SceneDefinition, 'duration'>): boolean =>

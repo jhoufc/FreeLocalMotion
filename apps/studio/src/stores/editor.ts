@@ -8,6 +8,7 @@ import {
   type MotionProject,
   type ProjectSummary,
   type SaveTemplateRequest,
+  type SpeechSource,
   type StarterSummary,
   type TemplateSummary,
   type UpdateTemplateRequest,
@@ -27,6 +28,8 @@ import {
   sceneTypeOf,
   setSceneEnabled as setSceneEnabledOp,
 } from '@lms/template-sdk';
+import type { SceneFill, SpeechRecord } from '@lms/speech';
+import { sceneFromFill } from '@lms/catalog/definitions';
 import { api, ApiError } from '../api/client';
 
 export interface Toast {
@@ -42,6 +45,8 @@ interface EditorState {
   templates: TemplateSummary[];
   userTemplates: UserTemplateSummary[];
   starters: StarterSummary[];
+  /** Speech plan of the open project when it was created from speech (reasons, alternatives). */
+  speech: SpeechRecord | null;
   projects: ProjectSummary[];
   project: MotionProject | null;
   /** JSON of the last persisted version, for dirty detection. */
@@ -60,6 +65,9 @@ interface EditorState {
   createProject(templateId: string, name?: string, format?: Format): Promise<void>;
   /** New free composition prefilled with a ready-made composition. */
   createFromStarter(starterId: string, name?: string, format?: Format): Promise<void>;
+  createFromSpeech(speech: SpeechSource, name?: string, format?: Format): Promise<boolean>;
+  /** Replaces a scene by another type filled from the same speech (keeps position and duration). */
+  swapScene(sceneId: string, type: string, fill: SceneFill): string | null;
   /* User templates */
   refreshUserTemplates(): Promise<void>;
   createFromUserTemplate(templateId: string, name?: string, format?: Format): Promise<void>;
@@ -180,6 +188,17 @@ export const useEditor = create<EditorState>((set, get) => {
     return result.affected;
   };
 
+  /** The speech plan of a project (404 = not created from speech). */
+  const loadSpeech = async (id: string) => {
+    set({ speech: null });
+    try {
+      const record = await api.projectSpeech(id);
+      if (get().project?.id === id) set({ speech: record });
+    } catch {
+      /* not a speech project */
+    }
+  };
+
   const load = (project: MotionProject) => {
     remember(project.id);
     set({
@@ -199,6 +218,7 @@ export const useEditor = create<EditorState>((set, get) => {
     templates: [],
     userTemplates: [],
     starters: [],
+    speech: null,
     projects: [],
     project: null,
     savedJson: '',
@@ -239,9 +259,42 @@ export const useEditor = create<EditorState>((set, get) => {
       if (get().saveState === 'dirty' && get().project?.id !== id) await get().save();
       try {
         load(await api.project(id));
+        void loadSpeech(id);
       } catch (err) {
         get().toast('error', `Não foi possível abrir o projeto: ${errMessage(err)}`);
       }
+    },
+
+    async createFromSpeech(speech, name, format) {
+      if (get().saveState === 'dirty') await get().save();
+      const free = get().templates.find((t) => t.mode === 'free');
+      if (!free) return false;
+      try {
+        const project = await api.createSpeechProject(free.id, speech, name, format);
+        load(project);
+        await loadSpeech(project.id);
+        await get().refreshProjects();
+        get().toast('success', `“${project.name}” criado a partir da fala — ${project.scenes.length} cenas, todas editáveis`);
+        return true;
+      } catch (err) {
+        get().toast('error', errMessage(err));
+        return false;
+      }
+    },
+
+    swapScene(sceneId, type, fill) {
+      return structural((project) => {
+        const index = findSceneIndex(project.scenes, sceneId);
+        const current = project.scenes[index];
+        if (!current) throw new SceneOperationError('Cena não encontrada');
+        // Keep the "sNN-" prefix: the speech panel finds the scene of each idea by it.
+        const prefix = /^(s\d+)-/.exec(current.id)?.[1];
+        const others = { scenes: project.scenes.filter((s) => s.id !== sceneId) };
+        const id = prefix ? `${prefix}-${type}`.slice(0, 64) : createSceneId(others, type);
+        const scene = sceneFromFill(type, { id: others.scenes.some((s) => s.id === id) ? createSceneId(others, type) : id, name: current.name, duration: current.duration }, fill);
+        const scenes = project.scenes.map((s, i) => (i === index ? (scene as unknown as typeof s) : s));
+        return { next: { ...project, scenes }, affected: scene.id, select: scene.id };
+      });
     },
 
     async createProject(templateId, name, format) {

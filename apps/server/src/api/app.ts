@@ -7,6 +7,7 @@ import {
   createFromTemplateRequestSchema,
   createProjectRequestSchema,
   createRenderRequestSchema,
+  planSpeechRequestSchema,
   publishRevisionRequestSchema,
   saveTemplateRequestSchema,
   slugify,
@@ -17,6 +18,8 @@ import { starterSummaries } from '@lms/catalog/definitions';
 import { HttpError, type ProjectStore } from '../projects/store';
 import type { RenderQueue } from '../rendering/queue';
 import type { TemplateLibrary } from '../templates/library';
+import { createSpeechProject, previewSpeechPlan } from '../speech/project';
+import type { SpeechService } from '../speech/service';
 
 export interface AppDeps {
   store: ProjectStore;
@@ -26,6 +29,8 @@ export interface AppDeps {
   library?: TemplateLibrary;
   maxUploadBytes: number;
   studioDist?: string;
+  /** Speech uploads + local transcription. Optional so tools that only render can omit it. */
+  speech?: SpeechService;
 }
 
 const param = (req: Request, key: string): string => {
@@ -34,7 +39,7 @@ const param = (req: Request, key: string): string => {
   return v;
 };
 
-export const createApp = ({ store, queue, templates, library, maxUploadBytes, studioDist }: AppDeps) => {
+export const createApp = ({ store, queue, templates, library, maxUploadBytes, studioDist, speech }: AppDeps) => {
   const app = express();
   app.disable('x-powered-by');
   const api = express.Router();
@@ -52,6 +57,39 @@ export const createApp = ({ store, queue, templates, library, maxUploadBytes, st
   /** Ready-made compositions (native, read-only) built from library scenes. */
   api.get('/starters', (_req, res) => {
     res.json(starterSummaries());
+  });
+
+  /* ---------------- speech → motion ---------------- */
+  const voice = (): SpeechService => {
+    if (!speech) throw new HttpError(501, 'Speech planning not available');
+    return speech;
+  };
+
+  api.get('/speech/capabilities', async (_req, res) => {
+    res.json(speech ? await speech.capabilities() : { media: false, transcription: false, model: '', detail: 'Indisponível neste servidor' });
+  });
+
+  /** Audio or video of the speaker (the audio track is extracted; the file itself is not kept). */
+  api.post('/speech/uploads', express.raw({ type: () => true, limit: 600 * 1024 * 1024 }), async (req, res) => {
+    const body = req.body as unknown;
+    if (!Buffer.isBuffer(body) || body.byteLength === 0) throw new HttpError(400, 'Empty upload');
+    const name = typeof req.query.name === 'string' ? req.query.name : 'fala';
+    res.status(201).json(await voice().upload(body, name));
+  });
+
+  api.get('/speech/uploads/:id', async (req, res) => {
+    res.json(await voice().get(param(req, 'id')));
+  });
+
+  api.post('/speech/uploads/:id/transcribe', async (req, res) => {
+    const language = typeof req.body?.language === 'string' ? req.body.language : undefined;
+    res.status(202).json(await voice().transcribe(param(req, 'id'), language));
+  });
+
+  /** Plan preview: which scene for which idea, and why (nothing is saved). */
+  api.post('/speech/plan', async (req, res) => {
+    const body = planSpeechRequestSchema.parse(req.body);
+    res.json(await previewSpeechPlan(voice(), body.speech));
   });
 
   /* ---------------- user templates ---------------- */
@@ -118,6 +156,11 @@ export const createApp = ({ store, queue, templates, library, maxUploadBytes, st
 
   api.post('/projects', async (req, res) => {
     const body = createProjectRequestSchema.parse(req.body);
+    if (body.speech) {
+      if (templates.get(body.templateId).mode !== 'free') throw new HttpError(400, 'Speech planning creates free compositions');
+      res.status(201).json(await createSpeechProject({ store, speech: voice() }, { speech: body.speech, ...(body.name ? { name: body.name } : {}), ...(body.format ? { format: body.format } : {}) }));
+      return;
+    }
     res.status(201).json(
       await store.create(body.templateId, { ...(body.name ? { name: body.name } : {}), ...(body.format ? { format: body.format } : {}), ...(body.starterId ? { starterId: body.starterId } : {}) }),
     );
@@ -149,6 +192,11 @@ export const createApp = ({ store, queue, templates, library, maxUploadBytes, st
     const project = await store.get(param(req, 'id'));
     res.setHeader('Content-Disposition', `attachment; filename="${slugify(project.name)}.lms.json"`);
     res.json(project);
+  });
+
+  /** The speech plan of a project created from speech (reasons, alternatives, words). */
+  api.get('/projects/:id/speech', async (req, res) => {
+    res.json(await store.readSpeech(param(req, 'id')));
   });
 
   /* ---------------- assets ---------------- */

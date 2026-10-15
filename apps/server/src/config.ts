@@ -18,6 +18,8 @@ export interface ServerConfig {
   /** Built studio (served in `pnpm start` mode when present). */
   studioDist: string;
   maxUploadBytes: number;
+  /** Speech uploads and local transcription (faster-whisper). */
+  speech: { dir: string; python: string; model: string; language: string; ffmpeg: string; ffprobe: string; script: string };
 }
 
 export const loadConfig = (overrides: Partial<ServerConfig> = {}): ServerConfig => ({
@@ -30,5 +32,14 @@ export const loadConfig = (overrides: Partial<ServerConfig> = {}): ServerConfig 
   watchDirs: [path.join(REPO_ROOT, 'packages')],
   studioDist: path.join(REPO_ROOT, 'apps/studio/dist'),
   maxUploadBytes: 60 * 1024 * 1024,
+  speech: {
+    dir: path.resolve(process.env.LMS_SPEECH_DIR ?? path.join(REPO_ROOT, 'speech')),
+    python: process.env.LMS_PYTHON ?? (process.platform === 'win32' ? 'python' : 'python3'),
+    model: process.env.LMS_WHISPER_MODEL ?? 'small',
+    language: process.env.LMS_SPEECH_LANGUAGE ?? 'pt',
+    ffmpeg: process.env.LMS_FFMPEG ?? 'ffmpeg',
+    ffprobe: process.env.LMS_FFPROBE ?? 'ffprobe',
+    script: path.join(REPO_ROOT, 'apps/server/python/transcribe.py'),
+  },
   ...overrides,
 });

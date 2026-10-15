@@ -6,7 +6,7 @@ import { animationSchema, baseInstance, graphic, premiumSceneType, text } from '
 export const editorialSplitSchema = z.object({
   ...sceneBaseShape,
   type: z.literal('editorial-split'),
-  duration: z.number().min(3.5).max(6.5),
+  duration: z.number().min(3.5).max(9),
   texts: z.object({ blockA: textElementSchema, blockB: textElementSchema, aux: textElementSchema }),
   elements: z.object({ panelA: graphicElementSchema, panelB: graphicElementSchema, rules: graphicElementSchema }),
   animation: animationSchema,
@@ -35,7 +35,7 @@ export const editorialSplitType = premiumSceneType<EditorialSplitScene>({
   description: 'Tela dividida com hierarquia editorial: painéis direcionais, tipografia por máscaras, linhas gráficas e índices.',
   category: 'editorial',
   heroTime: 2.4,
-  duration: { default: 4.5, min: 3.5, max: 6.5 },
+  duration: { default: 4.5, min: 3.5, max: 9 },
   schema: editorialSplitSchema,
   palette: { background: '#F1EDE4', foreground: '#141312', accent: '#E8432F', secondary: '#141312', surface: '#E3DDD0' },
   create: (init) => ({

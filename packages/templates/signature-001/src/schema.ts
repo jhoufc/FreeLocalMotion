@@ -18,10 +18,10 @@ export type SceneAnimation = z.infer<typeof animationSchema>;
 
 /** Duration bounds per scene type (seconds). Also used by the timeline drag handles. */
 export const SCENE_DURATION_LIMITS = {
-  impact: { min: 2.4, max: 5 },
-  energy: { min: 2.4, max: 5 },
+  impact: { min: 2.4, max: 7 },
+  energy: { min: 2.4, max: 8 },
   transformation: { min: 3.2, max: 6 },
-  signature: { min: 4, max: 8 },
+  signature: { min: 4, max: 10 },
 } as const;
 
 const durationFor = (id: keyof typeof SCENE_DURATION_LIMITS) =>

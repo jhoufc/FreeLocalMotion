@@ -6,11 +6,15 @@ import type {
   ProjectSummary,
   RenderJob,
   SaveTemplateRequest,
+  SpeechCapabilities,
+  SpeechSource,
+  SpeechUpload,
   StarterSummary,
   TemplateSummary,
   UpdateTemplateRequest,
   UserTemplateSummary,
 } from '@lms/shared';
+import type { SpeechPlan, SpeechRecord } from '@lms/speech';
 
 export class ApiError extends Error {
   constructor(
@@ -50,6 +54,15 @@ export const api = {
   project: (id: string) => request<MotionProject>(`/api/projects/${id}`),
   createProject: (templateId: string, name?: string, format?: Format, starterId?: string) => request<MotionProject>('/api/projects', json({ templateId, name, format, starterId })),
   starters: () => request<StarterSummary[]>('/api/starters'),
+  speechCapabilities: () => request<SpeechCapabilities>('/api/speech/capabilities'),
+  uploadSpeech: (file: File) =>
+    request<SpeechUpload>(`/api/speech/uploads?name=${encodeURIComponent(file.name)}`, { method: 'POST', body: file, headers: { 'content-type': 'application/octet-stream' } }),
+  speechUpload: (id: string) => request<SpeechUpload>(`/api/speech/uploads/${id}`),
+  transcribeSpeech: (id: string, language: string) => request<SpeechUpload>(`/api/speech/uploads/${id}/transcribe`, json({ language })),
+  planSpeech: (speech: SpeechSource) =>
+    request<{ plan: SpeechPlan; score: SpeechRecord['score']; duration: number; timed: boolean; hasAudio: boolean }>('/api/speech/plan', json({ speech })),
+  createSpeechProject: (templateId: string, speech: SpeechSource, name?: string, format?: Format) => request<MotionProject>('/api/projects', json({ templateId, speech, name, format })),
+  projectSpeech: (id: string) => request<SpeechRecord>(`/api/projects/${id}/speech`),
   saveProject: (project: MotionProject, force = false) =>
     request<MotionProject>(`/api/projects/${project.id}${force ? '?force=1' : ''}`, { method: 'PUT', body: JSON.stringify(project) }),
   duplicateProject: (id: string, name?: string) => request<MotionProject>(`/api/projects/${id}/duplicate`, json({ name })),

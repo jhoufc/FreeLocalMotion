@@ -20,6 +20,7 @@ import {
   type SceneType,
 } from './schema';
 import { CHOREO, entranceAt, transformationToScene } from './timing';
+import { SIGNATURE_PLANNING } from './planning';
 
 /**
  * The four Signature / 001 animations as *global scene types*. The template uses them in
@@ -149,6 +150,7 @@ const makeType = <T extends SceneType>(type: T, schema: SceneTypeDefinition<Extr
     version: SIGNATURE_SCENE_VERSION,
     heroTime: info.heroTime,
     duration: { default: info.default, ...SCENE_DURATION_LIMITS[type], strategy: info.strategy, note: info.note },
+    planning: SIGNATURE_PLANNING[type],
   };
   return defineSceneType<Extract<AnyScene, { type: T }>>({
     ...def,

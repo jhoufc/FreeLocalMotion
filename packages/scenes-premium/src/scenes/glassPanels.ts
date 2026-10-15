@@ -14,7 +14,7 @@ export type GlassPanel = z.infer<typeof glassPanelSchema>;
 export const glassPanelsSchema = z.object({
   ...sceneBaseShape,
   type: z.literal('glass-panels'),
-  duration: z.number().min(3.5).max(7),
+  duration: z.number().min(3.5).max(9),
   texts: z.object({ title: textElementSchema, subtitle: textElementSchema }),
   elements: z.object({ panels: graphicElementSchema, orbs: graphicElementSchema, sheen: graphicElementSchema }),
   animation: animationSchema,
@@ -41,7 +41,7 @@ export const glassPanelsType = premiumSceneType<GlassPanelsScene>({
   description: 'Painéis translúcidos em perspectiva 2.5D com reflexo, parallax e revelação tipográfica — apresentação de produto/UI.',
   category: 'product',
   heroTime: 2.6,
-  duration: { default: 5, min: 3.5, max: 7 },
+  duration: { default: 5, min: 3.5, max: 9 },
   schema: glassPanelsSchema,
   palette: { background: '#060912', foreground: '#EEF3FF', accent: '#55E6FF', secondary: '#7A5CFF', surface: '#121A2E' },
   create: (init) => ({

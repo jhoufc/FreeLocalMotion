@@ -37,7 +37,7 @@ export const parseSeries = (s: string): number[] =>
 export const infographicSchema = z.object({
   ...sceneBaseShape,
   type: z.literal('infographic'),
-  duration: z.number().min(3.5).max(9),
+  duration: z.number().min(3.5).max(10),
   texts: z.object({ title: textElementSchema, note: textElementSchema }),
   elements: z.object({ cards: graphicElementSchema, charts: graphicElementSchema }),
   animation: animationSchema,
@@ -62,7 +62,7 @@ export const infographicType = motionSceneType<InfographicScene>({
   description: 'Indicadores animados — contador, barra de progresso, gráfico de linha e porcentagem circular — com os seus dados.',
   category: 'data',
   heroTime: 3.2,
-  duration: { default: 5, min: 3.5, max: 9 },
+  duration: { default: 5, min: 3.5, max: 10 },
   schema: infographicSchema,
   palette: { background: '#0A0B10', foreground: '#F1F3F9', accent: '#38F0A4', secondary: '#6C7BFF', surface: '#14161F' },
   create: (init) => ({

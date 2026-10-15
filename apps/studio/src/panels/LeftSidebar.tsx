@@ -1,6 +1,6 @@
 import { useMemo, useRef, useState } from 'react';
 import { Player, Thumbnail } from '@remotion/player';
-import { Copy, Download, Eye, EyeOff, FolderOpen, Layers, LayoutTemplate, Plus, Trash2, Upload, Clapperboard } from 'lucide-react';
+import { AudioLines, Copy, Download, Eye, EyeOff, FolderOpen, Layers, LayoutTemplate, Plus, Trash2, Upload, Clapperboard } from 'lucide-react';
 import { getAtPath, type MotionProject, type ProjectSummary, type TemplateSummary } from '@lms/shared';
 import { TemplateStage, templateModules, type StageProps } from '@lms/catalog';
 import { useEditor } from '../stores/editor';
@@ -11,8 +11,9 @@ import { KindIcon } from './KindIcon';
 import { NewCreationDialog } from '../components/NewCreationDialog';
 import { TemplatesTab } from './TemplatesTab';
 import { SceneList } from './SceneList';
+import { SpeechTab } from './SpeechTab';
 
-type Tab = 'scene' | 'templates' | 'projects';
+type Tab = 'scene' | 'speech' | 'templates' | 'projects';
 
 /* ------------------------------------------------------------------ */
 /* Scenes + layers                                                     */
@@ -107,6 +108,8 @@ const originLabel = (origin: ProjectSummary['origin'], templates: TemplateSummar
     case 'blank':
       return 'Livre';
     case 'template':
+      if (origin.templateId === 'speech') return 'Da fala';
+      if (origin.templateId.startsWith('starter:')) return 'Pronta';
       return templates.find((t) => t.id === origin.templateId)?.name ?? origin.templateId;
     case 'user-template':
       return `de ${origin.name}`;
@@ -183,12 +186,19 @@ const ProjectsTab = () => {
 export const LeftSidebar = ({ project, model }: { project: MotionProject; model: ProjectModel }) => {
   const [tab, setTab] = useState<Tab>('scene');
   const duplicate = useEditor((s) => s.duplicateProject);
+  const hasSpeech = useEditor((s) => Boolean(s.speech));
+  const current = hasSpeech || tab !== 'speech' ? tab : 'scene';
   return (
     <aside className="panel area-left">
       <div className="tabs">
-        <button className={`tab ${tab === 'scene' ? 'on' : ''}`} onClick={() => setTab('scene')}>
+        <button className={`tab ${current === 'scene' ? 'on' : ''}`} onClick={() => setTab('scene')}>
           <Layers size={13} /> Cenas
         </button>
+        {hasSpeech && (
+          <button className={`tab ${current === 'speech' ? 'on' : ''}`} onClick={() => setTab('speech')}>
+            <AudioLines size={13} /> Fala
+          </button>
+        )}
         <button className={`tab ${tab === 'templates' ? 'on' : ''}`} onClick={() => setTab('templates')}>
           <LayoutTemplate size={13} /> Templates
         </button>
@@ -196,7 +206,8 @@ export const LeftSidebar = ({ project, model }: { project: MotionProject; model:
           <FolderOpen size={13} /> Projetos
         </button>
       </div>
-      {tab === 'scene' && <ScenesTab project={project} model={model} />}
+      {current === 'scene' && <ScenesTab project={project} model={model} />}
+      {current === 'speech' && <SpeechTab project={project} model={model} />}
       {tab === 'templates' && <TemplatesTab />}
       {tab === 'projects' && <ProjectsTab />}
       {tab === 'projects' && (

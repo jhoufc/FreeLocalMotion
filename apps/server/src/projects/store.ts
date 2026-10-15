@@ -25,6 +25,7 @@ export class HttpError extends Error {
 }
 
 const PROJECT_FILE = 'project.json';
+const SPEECH_FILE = 'speech.json';
 
 /** Strictly increasing ISO timestamps: `updatedAt` doubles as the document's version token. */
 const nextStamp = (previous: string): string => {
@@ -128,6 +129,17 @@ export class ProjectStore {
     const project = template.createDefaults({ id: createId('p-'), name: opts.name ?? fallbackName, format, now });
     await writeJsonAtomic(path.join(this.dir(project.id), PROJECT_FILE), this.validate(project).project);
     return project;
+  }
+
+  /** Speech plan of a project created from speech (`projects/<id>/speech.json`). */
+  async writeSpeech(projectId: string, data: unknown): Promise<void> {
+    await writeJsonAtomic(path.join(this.dir(projectId), SPEECH_FILE), data);
+  }
+
+  async readSpeech(projectId: string): Promise<unknown> {
+    const file = path.join(this.dir(projectId), SPEECH_FILE);
+    if (!(await exists(file))) throw new HttpError(404, 'Este projeto não foi criado a partir de uma fala');
+    return readJson(file);
   }
 
   /** Folder holding a project's asset files. */

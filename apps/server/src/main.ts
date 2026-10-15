@@ -5,6 +5,7 @@ import { ProjectStore } from './projects/store';
 import { RenderQueue } from './rendering/queue';
 import { RemotionEngine } from './rendering/remotion-engine';
 import { TemplateLibrary } from './templates/library';
+import { SpeechService } from './speech/service';
 
 const config = loadConfig();
 const store = new ProjectStore(config.projectsDir, templateDefinitions);
@@ -29,7 +30,8 @@ const library = new TemplateLibrary(config.templatesDir, {
   log: (m) => console.log(`[templates] ${m}`),
 });
 
-const app = createApp({ store, queue, templates: templateDefinitions, library, maxUploadBytes: config.maxUploadBytes, studioDist: config.studioDist });
+const speech = new SpeechService(config.speech);
+const app = createApp({ store, queue, templates: templateDefinitions, library, speech, maxUploadBytes: config.maxUploadBytes, studioDist: config.studioDist });
 
 app.listen(config.port, config.host, () => {
   console.log(`Local Motion Studio server  →  http://${config.host}:${config.port}`);

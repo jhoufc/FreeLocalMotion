@@ -26,6 +26,9 @@ importers:
       '@lms/shared':
         specifier: workspace:*
         version: link:packages/shared
+      '@lms/speech':
+        specifier: workspace:*
+        version: link:packages/speech
       '@lms/template-sdk':
         specifier: workspace:*
         version: link:packages/template-sdk
@@ -65,6 +68,9 @@ importers:
       '@lms/shared':
         specifier: workspace:*
         version: link:../../packages/shared
+      '@lms/speech':
+        specifier: workspace:*
+        version: link:../../packages/speech
       '@lms/template-sdk':
         specifier: workspace:*
         version: link:../../packages/template-sdk
@@ -111,6 +117,9 @@ importers:
       '@lms/shared':
         specifier: workspace:*
         version: link:../../packages/shared
+      '@lms/speech':
+        specifier: workspace:*
+        version: link:../../packages/speech
       '@lms/template-sdk':
         specifier: workspace:*
         version: link:../../packages/template-sdk
@@ -163,6 +172,9 @@ importers:
       '@lms/shared':
         specifier: workspace:*
         version: link:../shared
+      '@lms/speech':
+        specifier: workspace:*
+        version: link:../speech
       '@lms/template-sdk':
         specifier: workspace:*
         version: link:../template-sdk
@@ -238,6 +250,9 @@ importers:
       '@lms/shared':
         specifier: workspace:*
         version: link:../shared
+      '@lms/speech':
+        specifier: workspace:*
+        version: link:../speech
       '@lms/template-sdk':
         specifier: workspace:*
         version: link:../template-sdk
@@ -269,6 +284,9 @@ importers:
       '@lms/shared':
         specifier: workspace:*
         version: link:../shared
+      '@lms/speech':
+        specifier: workspace:*
+        version: link:../speech
       '@lms/template-sdk':
         specifier: workspace:*
         version: link:../template-sdk
@@ -295,11 +313,16 @@ importers:
         specifier: ^4.1.12
         version: 4.6.5
 
+  packages/speech: {}
+
   packages/template-sdk:
     dependencies:
       '@lms/shared':
         specifier: workspace:*
         version: link:../shared
+      '@lms/speech':
+        specifier: workspace:*
+        version: link:../speech
       zod:
         specifier: ^4.1.12
         version: 4.6.5
@@ -322,6 +345,9 @@ importers:
       '@lms/shared':
         specifier: workspace:*
         version: link:../../shared
+      '@lms/speech':
+        specifier: workspace:*
+        version: link:../../speech
       '@lms/template-sdk':
         specifier: workspace:*
         version: link:../../template-sdk

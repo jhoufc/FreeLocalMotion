@@ -6,7 +6,7 @@ import { animationSchema, baseInstance, graphic, premiumSceneType, text } from '
 export const cinematicOutroSchema = z.object({
   ...sceneBaseShape,
   type: z.literal('cinematic-outro'),
-  duration: z.number().min(4).max(8),
+  duration: z.number().min(4).max(10),
   texts: z.object({ headline: textElementSchema, sub: textElementSchema, signature: textElementSchema }),
   elements: z.object({ emblem: graphicElementSchema, streaks: graphicElementSchema, flare: graphicElementSchema }),
   animation: animationSchema,
@@ -33,7 +33,7 @@ export const cinematicOutroType = premiumSceneType<CinematicOutroScene>({
   description: 'Encerramento premium: rastros convergentes, emblema geométrico animado (ou logotipo), headline, subtítulo, assinatura e saída para o preto.',
   category: 'signature',
   heroTime: 3.3,
-  duration: { default: 5, min: 4, max: 8 },
+  duration: { default: 5, min: 4, max: 10 },
   schema: cinematicOutroSchema,
   palette: { background: '#040406', foreground: '#F3F1EC', accent: '#E7C27A', secondary: '#7B8CFF', surface: '#121216' },
   create: (init) => ({

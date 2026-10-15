@@ -101,10 +101,58 @@ export type CreateFromTemplateRequest = z.infer<typeof createFromTemplateRequest
 
 export const publishRevisionRequestSchema = z.object({ projectId: z.string().min(1) });
 
+/* ---------------- speech → motion ---------------- */
+
+/** Where the speech comes from: a transcript, an uploaded audio/video (transcribed locally), or both. */
+export const speechSourceSchema = z
+  .object({
+    /** Transcript as plain text, SRT, WebVTT or word-timed JSON. */
+    transcript: z.string().min(1).max(500_000).optional(),
+    /** Audio/video sent to `POST /api/speech/uploads`: its audio becomes the soundtrack. */
+    uploadId: z.string().regex(/^s-[a-z0-9-]{6,64}$/).optional(),
+    /** The user's corrections of the transcription (the audio clock is kept). */
+    editedText: z.string().min(1).max(200_000).optional(),
+    /** Scene type chosen by the user for an idea (idea index → scene type id). */
+    force: z.record(z.string().regex(/^\d+$/), z.string().regex(/^[a-z0-9-]+$/)).optional(),
+    /** Palette of a ready-made composition to use (starter id). */
+    themeId: z.string().regex(/^[a-z0-9-]+$/).optional(),
+  })
+  .refine((s) => Boolean(s.transcript || s.uploadId), { message: 'Envie a transcrição ou o áudio/vídeo' });
+export type SpeechSource = z.infer<typeof speechSourceSchema>;
+
+export const planSpeechRequestSchema = z.object({ speech: speechSourceSchema, format: formatSchema.optional() });
+
+export type SpeechUploadStatus = 'uploaded' | 'transcribing' | 'transcribed' | 'error';
+
+export interface SpeechUpload {
+  id: string;
+  originalName: string;
+  /** Seconds of audio. */
+  duration: number;
+  status: SpeechUploadStatus;
+  /** 0–1 while transcribing. */
+  progress: number;
+  error: string | null;
+  /** Transcription (word timings) when done. */
+  text: string | null;
+  language: string | null;
+}
+
+export interface SpeechCapabilities {
+  /** ffmpeg available (audio/video uploads). */
+  media: boolean;
+  /** Local transcription (faster-whisper) available. */
+  transcription: boolean;
+  model: string;
+  detail: string | null;
+}
+
 export const createProjectRequestSchema = z.object({
   templateId: z.string().min(1),
   /** Start from a ready-made composition (free-composition template only). */
   starterId: z.string().regex(/^[a-z0-9-]+$/).optional(),
+  /** Plan the composition from speech (free-composition template only). */
+  speech: speechSourceSchema.optional(),
   name: z.string().min(1).max(80).optional(),
   format: formatSchema.optional(),
 });

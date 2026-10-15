@@ -8,7 +8,7 @@ export const orbitalNodeSchema = z.object({ label: z.string().max(16), value: z.
 export const orbitalDataSchema = z.object({
   ...sceneBaseShape,
   type: z.literal('orbital-data'),
-  duration: z.number().min(4).max(7),
+  duration: z.number().min(4).max(9),
   texts: z.object({ headline: textElementSchema, sub: textElementSchema }),
   elements: z.object({ core: graphicElementSchema, orbits: graphicElementSchema, nodes: graphicElementSchema, links: graphicElementSchema }),
   animation: animationSchema,
@@ -36,7 +36,7 @@ export const orbitalDataType = premiumSceneType<OrbitalDataScene>({
   description: 'Sistema orbital modular: núcleo luminoso, órbitas inclinadas em 2.5D, nós de dados conectados e transição para a headline.',
   category: 'technology',
   heroTime: 3,
-  duration: { default: 5, min: 4, max: 7 },
+  duration: { default: 5, min: 4, max: 9 },
   schema: orbitalDataSchema,
   palette: { background: '#05070D', foreground: '#E9F1FF', accent: '#4DF0C5', secondary: '#5B7BFF', surface: '#0F1524' },
   create: (init) => ({

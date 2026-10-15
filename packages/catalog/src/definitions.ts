@@ -17,3 +17,4 @@ export const templateDefinitions = createTemplateRegistry<AnyTemplateDefinition>
   compositionDefinition as unknown as AnyTemplateDefinition,
 ]);
 export { STARTERS, buildStarter, findStarter, starterSummaries } from './starters';
+export { SPEECH_ORIGIN_ID, buildSpeechProject, planSpeechProject, refillScene, sceneFromFill, speechSceneTypes, type SpeechProjectInit } from './speech';

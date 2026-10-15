@@ -6,7 +6,7 @@ import { animationSchema, baseInstance, graphic, premiumSceneType, text } from '
 export const gridBreakdownSchema = z.object({
   ...sceneBaseShape,
   type: z.literal('grid-breakdown'),
-  duration: z.number().min(3.5).max(6.5),
+  duration: z.number().min(3.5).max(8),
   texts: z.object({ headline: textElementSchema, sub: textElementSchema }),
   elements: z.object({ cells: graphicElementSchema, lines: graphicElementSchema, accents: graphicElementSchema }),
   animation: animationSchema,
@@ -34,7 +34,7 @@ export const gridBreakdownType = premiumSceneType<GridBreakdownScene>({
   description: 'Uma grade geométrica se constrói, fragmenta e se reorganiza para revelar a mensagem.',
   category: 'abstract',
   heroTime: 2.7,
-  duration: { default: 4.5, min: 3.5, max: 6.5 },
+  duration: { default: 4.5, min: 3.5, max: 8 },
   schema: gridBreakdownSchema,
   palette: { background: '#0B0B0D', foreground: '#F2F0EA', accent: '#FF3D6E', secondary: '#2E2E38', surface: '#1A1A20' },
   create: (init) => ({

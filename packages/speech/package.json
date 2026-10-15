@@ -1,0 +1,13 @@
+{
+  "name": "@lms/speech",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Speech-driven planning: transcripts (text, SRT/VTT, word timings) → ideas → scene choices with reasons. Pure TypeScript, no I/O.",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc -p tsconfig.json"
+  }
+}

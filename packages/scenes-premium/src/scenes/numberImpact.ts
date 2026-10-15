@@ -8,7 +8,7 @@ export const NUMBER_SEPARATORS = ['comma', 'dot', 'space', 'none'] as const;
 export const numberImpactSchema = z.object({
   ...sceneBaseShape,
   type: z.literal('number-impact'),
-  duration: z.number().min(3).max(6),
+  duration: z.number().min(3).max(8),
   texts: z.object({ kicker: textElementSchema, caption: textElementSchema }),
   elements: z.object({ number: graphicElementSchema, lines: graphicElementSchema, markers: graphicElementSchema }),
   animation: animationSchema,
@@ -41,7 +41,7 @@ export const numberImpactType = premiumSceneType<NumberImpactScene>({
   description: 'Número gigante com contagem tipo odômetro, linhas de velocidade, régua de progresso e pulso de destaque.',
   category: 'data',
   heroTime: 2.6,
-  duration: { default: 4, min: 3, max: 6 },
+  duration: { default: 4, min: 3, max: 8 },
   schema: numberImpactSchema,
   palette: { background: '#08080A', foreground: '#F7F7F2', accent: '#D7FF3A', secondary: '#5A5AFF', surface: '#16161B' },
   create: (init) => ({

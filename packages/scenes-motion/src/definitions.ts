@@ -9,8 +9,23 @@ import { uiHighlightType } from './scenes/uiHighlight';
 import { appScreensType } from './scenes/appScreens';
 import { brandRevealType, infographicType } from './scenes/dataBrand';
 import { productCalloutsType, productHeroType, productImpactType } from './scenes/products';
+import { MOTION_PLANNING } from './planning';
 export { MOTION_FAMILY } from './common';
 export { semanticWordsType, bouncingBallType };
 
 /** Data side of the Studio Motion pack (Node-safe: no React, no fonts), in library order. */
-export const MOTION_SCENE_TYPES: readonly AnySceneTypeDefinition[] = [asAnySceneType(bouncingBallType), asAnySceneType(semanticWordsType), asAnySceneType(morphLineType), asAnySceneType(irisRevealType), asAnySceneType(floatingPhoneType), asAnySceneType(uiHighlightType), asAnySceneType(appScreensType), asAnySceneType(productHeroType), asAnySceneType(productCalloutsType), asAnySceneType(productImpactType), asAnySceneType(infographicType), asAnySceneType(brandRevealType)];
+export const MOTION_SCENE_TYPES: readonly AnySceneTypeDefinition[] = [
+  bouncingBallType,
+  semanticWordsType,
+  morphLineType,
+  irisRevealType,
+  floatingPhoneType,
+  uiHighlightType,
+  appScreensType,
+  productHeroType,
+  productCalloutsType,
+  productImpactType,
+  infographicType,
+  brandRevealType,
+].map((t) => ({ ...asAnySceneType(t as never), planning: MOTION_PLANNING[t.id] }));
+export { MOTION_PLANNING };

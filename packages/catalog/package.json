@@ -20,7 +20,8 @@
     "@lms/scenes-premium": "workspace:*",
     "@lms/motion-core": "workspace:*",
     "zod": "^4.1.12",
-    "@lms/scenes-motion": "workspace:*"
+    "@lms/scenes-motion": "workspace:*",
+    "@lms/speech": "workspace:*"
   },
   "peerDependencies": {
     "react": ">=18",
